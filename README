@@ -1,0 +1,68 @@
+==========
+PyMagellan
+==========
+
+pymagellan is a python interface to the map format used by Magellan GPS devices. The code is rougly
+based on the specification of the Magellan map format from the mapsend_format Yahoo group. 
+It also provides a command line tool for converting data from OpenStreetMap.
+
+The produced maps should work fine with the Magellan Meridian, Sportrack, Explorist and Triton series GPS 
+devices from Magellan Navigation. 
+
+Note, the code is in pre-alpha state and is not extensively tested yet. Use at your own risk.
+
+PyMagellan is is released under the GPL v2 license
+
+Features
+--------
+* Generates Magellan detailed maps from OSM files
+* The map generation is highly configurable using a Osmarender like XML style file
+* Topographical maps can be created from any GDAL supported raster DEM file
+* Can generate POIs sorted in categories and sub-categories
+* Support for both big/small-endian byte order
+* Can download openstreetmap data from the internet
+
+Download
+--------
+
+The latest release can be found at the `sourceforge download page <http://prdownloads.sf.net/pymag>`_
+
+Or you can check out the development version:
+
+> svn co http://pymag.svn.sourceforge.net/svnroot/pymag/pymagellan/trunk pymagellan
+
+
+Requirements
+------------
+Python version >= 2.4
+cElementTree (only needed for Python 2.4)
+NumPy version >= 1.0.4
+GDAL library with Python support (SVN trunk) (only needed for topo maps)
+
+Installation
+------------
+Run as root:
+# python setup.py install
+
+In Ubuntu:
+> sudo python setup.py install
+
+How to run it
+-------------
+
+Simple example to generate an image file mymap.imi from an OSM xml-file myfile.osm
+
+> osmmag.py -v -n "My map" -o mymap.imi -r osmmagellan/data/osmmagrules.xml myfile.osm
+
+Future improvements and features (in order of importance)
+---------------------------------------------------------
+* Write a nicer and complete rule file (the distributed one is not more than a simple example)
+* Generation of polygons from coastlines
+* Improve speed
+* Custom colours (right now there is only a limited selection of colors)
+* Possibility to create base maps 
+* Routable maps
+
+Links
+-----
+* `Mapsend format yahoo group <http://tech.groups.yahoo.com/group/mapsend_format>`_

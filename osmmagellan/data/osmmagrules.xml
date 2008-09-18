@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<osmmag>
+  <name>OSMImport</name>
+  <!-- Groups -->
+  <groups>
+    <!-- Roads -->
+    <group name="Roads" searchgroup="true">
+      <layers>
+	<layer name="Freeways" filename="fwy" color="BLACK" style="US_INTERSTATE_HW_LINE" type="polyline" draworder="10"/> 
+	<layer name="Major_Highways" filename="mj_hwy" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="20"/>
+	<layer name="Minor_Highways" filename="mn_hwy" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="20"/>
+	<layer name="Major_Roads" filename="maj" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="30"/>
+	<layer name="Streets" filename="str" color="BLACK" style="US_STREET_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="40"/>
+	<layer name="Trails_4WD" filename="trail4" color="BLACK" style="TRAIL_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="50"/>
+      </layers>
+    </group>
+
+    <!-- Paths -->
+    <group name="Paths">
+      <layers>
+	<layer name="Trails" filename="trail" color="BLACK" style="TRAIL_LINE" type="polyline" />
+      </layers>
+    </group>
+
+
+    <!-- Parks -->
+    <group name="Parks" searchgroup="true">
+      <layers>
+	<layer name="Parks" filename="park" color="LIGHT_GRAY" style="BOX_PATT" type="polygon" draworder="100" />
+      </layers>
+    </group>
+
+    <!-- Buildings -->
+    <group name="Buildings" searchgroup="false">
+      <layers>
+	<layer name="Buildings" filename="build" color="ORANGE" style="SOLID_FILL" type="polygon"  draworder="90" />
+      </layers>
+    </group>
+
+    <!-- Land use -->
+    <group name="Land_Use" searchgroup="false">
+      <layers>
+	<layer name="Farm" filename="farm" color="YELLOW" style="SOLID_FILL" type="polygon" draworder="90" />
+      </layers>
+    </group>    
+    
+    <!-- Hydrography -->
+    <group name="Hydrography" searchgroup="true">
+      <layers>
+	<layer name="Hydro_Polygons" filename="hydp" color="DARK_GRAY" style="SOLID_FILL" type="polygon" draworder="99" />
+	<layer name="Hydro_Lines" filename="hydl" color="DARK_GRAY" style="SINGLE_LINE" type="polyline" draworder="99" />
+      </layers>
+    </group>
+
+    <!-- Points -->
+    <group name="Points" searchgroup="true">
+      <layers>
+	<layer name="Points" filename="points" color="LIGHT_GRAY" style='LIGHT_HOUSE' type="point" />
+      </layers>
+    </group>
+    
+
+
+    <!-- Railroads -->
+    <group name="Railroads" searchgroup="false">
+      <layers>
+	<layer name="Railroads" filename="railrd" color="DARK_GRAY" style="US_RAIL_ROAD" type="polyline" />
+      </layers>
+    </group>
+  </groups>
+
+  <!-- Layer visibility presets -->
+  <visibilitypresets>
+    <visibilitypreset name="freeway">
+      <layervisibility>
+	<range from="0" to="10"/>  <!-- Lowest -->
+	<range from="0" to="10"/>  <!-- Low -->
+	<range from="0" to="10"/>  <!-- Medium -->
+	<range from="0" to="10"/>  <!-- High -->
+	<range from="0" to="10"/>  <!-- Highest -->
+      </layervisibility>
+      <labelvisibility>
+	<range from="0" to="10"/>  <!-- Lowest -->
+	<range from="0" to="10"/>  <!-- Low -->
+	<range from="0" to="10"/>  <!-- Medium -->
+	<range from="0" to="10"/>  <!-- High -->
+	<range from="0" to="10"/>  <!-- Highest -->
+      </labelvisibility>
+      <basemapvisibility>
+	<range from="0" to="10"/>  <!-- Lowest -->
+	<range from="0" to="10"/>  <!-- Low -->
+	<range from="0" to="10"/>  <!-- Medium -->
+	<range from="0" to="10"/>  <!-- High -->
+	<range from="0" to="10"/>  <!-- Highest -->
+      </basemapvisibility>
+    </visibilitypreset>
+  </visibilitypresets>
+
+
+  <!-- POI categories- --> 
+  <poicategories> 
+    <attributes>
+      <attr name="Phone number"/>
+      <attr name="Address"/>
+    </attributes>
+    <category name="Gas stations" icon="FUEL"/> 
+    <category name="Restaurants" icon="RESTUARANTS">
+      <subcategories>
+	<subcategory name="Thai"/>
+	<subcategory name="Fast food"/>
+      </subcategories>
+    </category>
+    <category name="Shopping" icon="HOUSE">
+      <subcategories>
+	<subcategory name="Supermarket"/>
+	<subcategory name="Other"/>
+      </subcategories>
+    </category>
+    <category name="Education" icon="HOUSE">
+      <subcategories>
+	<subcategory name="Schools"/>
+      </subcategories>
+    </category>
+  </poicategories>
+
+
+
+  <!-- OSM translation rules -->
+  <rules>
+    
+    <!-- Parks -->
+    <rule e="way" k="leisure" v="park"> <polygon layer="Parks"/> </rule>
+    
+    <!-- Water -->
+    <rule e="way" k="natural" v="water"> <polygon layer="Hydro_Polygons"/> </rule>
+    <rule e="way" k="waterway" v="*"> <polyline layer="Hydro_Lines"/> </rule>
+    
+    <!-- Land use -->
+    <rule e="way" k="landuse" v="farm"> <polygon layer="Farm"/> </rule>
+    
+    <!-- Roads and streets -->
+    <rule e="way" k="highway" v="motorway|motorway_link"> <polyline layer="Freeways"/> </rule>
+    <rule e="way" k="highway" v="trunk|trunk_link"> <polyline layer="Major_Highways"/> </rule> 
+    <rule e="way" k="highway" v="primary"> <polyline layer="Minor_Highways"/> </rule> 
+    <rule e="way" k="highway" v="primary_link"> <polyline layer="Minor_Highways"/> </rule> 
+    <rule e="way" k="highway" v="secondary"> <polyline layer="Major_Roads"/> </rule> 
+    <rule e="way" k="highway" v="tertiary"> <polyline layer="Streets"/> </rule> 
+    <rule e="way" k="highway" v="residential|living_street|unclassified|minor"> <polyline layer="Streets"/> </rule>
+    <rule e="way" k="highway" v="track|unsurfaced"> <polyline layer="Trails_4WD"/> </rule> 
+    <rule e="way" k="highway" v="service"> <polyline layer="Streets"/> </rule> 
+
+    <!-- Paths -->
+    <rule e="way" k="highway" v="footway|steps"> <polyline layer="Trails"/> </rule> 
+
+    <!-- Cycle ways-->
+    <rule e="way" k="cycleway" v="track"> <polyline layer="Trails"/></rule> 
+
+    <!-- Railways -->
+    <rule e="way" k="railway" v="rail|light_rail|subway|tram"> <polyline layer="Railroads"/> </rule>
+
+    <!-- Points -->
+    <rule e="node" k="amenity" v="kindergarten">
+      <point layer="Points"/>
+    </rule>
+
+    <!-- POI -->
+    <rule e="node" k="amenity" v="fuel"> <poi category="Gas stations"/> </rule>
+    <rule e="node" k="shop" v="supermarket"> 
+      <poi category="Shopping" subcategory="Supermarket"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="amenity" v="fast_food">
+      <poi category="Restaurants" subcategory="Fast food"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="amenity" v="school"> 
+      <poi category="Education" subcategory="Schools"/>
+    </rule>
+
+  </rules>
+  
+</osmmag>

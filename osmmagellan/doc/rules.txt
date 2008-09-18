@@ -1,0 +1,52 @@
+Osmmag rules
+============
+The rule file governs how the Magellan GPS map is generated from OSM data. 
+The file is in XML format and is similar to the rule file of [http://wiki.openstreetmap.org/index.php/Osmarender Osmarender].
+
+The file data/osmmagrules.xml shows an example of a rule file with comments. 
+
+The root element is called osmmag may which contains the following important sub elements: groups, poicategories, visibilitypresets and rules.
+
+groups
+------
+This element contains one or more group elements which in turn contains layers and attributes. The attributes element is optional and contains what attributes except for the feature name the layer will have. Currently the attributes element is not implemented in the code.
+
+The layers sub element contains layer elements which defines the name type and how the layers are drawn. The following tags are valid:
+
+================ ===========================================================
+Tag              Description
+================ ===========================================================
+name             The name of the layer
+type             Tells what type of layer it is. Possible values are:
+	         "polygon", "polyline" and "point"
+filename         The name of the file inside the image
+color            The drawn color. Possible values are: BLACK, WHITE
+	         DARK_GRAY, LIGHT_GRAY, GRAY, CYAN, RED, ORANGE, 
+	         BLUE, GREEN, PAIL_GREEN, PAIL_YELLOW, YELLOW, 
+	         DARK_RED, MAGENTA, BROWN, DARK_BLUE
+style            Tells how the geometries will be drawn. See the next table for
+                 possible values
+visibilitypreset This refers to the name of visibility presets which
+		 tells at what zoom level the layer and its labels are visible
+draworder        An integer that determines in what order the layer will be 
+		 drawn. The layer with the lowest value will be drawn first
+================ ===========================================================
+
+The styles are different depending on what type of layers it is. Here
+is a table with possible values of the style tag:
+
+======== ===================================================================
+Type     Valid values
+======== ===================================================================
+polygon  SOLID_FILL, BOX_PATT, DOT_FILL, DASH_FILL, NO_FILL, SLANT_PATT, 
+	 HEX_PATT, MCOMBO_AREA, MDEPTH_AREA 
+polyline US_INTERSTATE_HW_LINE, US_STATE_HW_LINE, US_STREET_LINE, US_RAIL_ROAD,
+         SINGLE_LINE, US_STREET_LINE, MSOLID_LINE,MDOT_LINE, MDASH_LINE,
+	 THICK_LINE, TRAIL_LINE, THICK_DASH_LINE, US_FEDERAL_HW_LINE,
+	 US_MAJOR_RD_LINE, DOT_LINE, STREAM_LINE, RIVER_LINE, DASH_LINE,
+         US_UNPAVED_RD_LINE, US_RR_LINE, MCOMBO_LINE, MDEPTH_LINE
+point    SOLID_FILL, BOX_PATT, DOT_FILL, DASH_FILL, NO_FILL, SLANT_PATT, 
+	 HEX_PATT, MCOMBO_AREA, MDEPTH_AREA
+======== ===================================================================
+
+To be continued

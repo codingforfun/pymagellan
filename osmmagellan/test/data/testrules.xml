@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<osmmag>
+  <rules>
+    <!-- Fuel station -->
+    <rule e="node" k="amenity" v="fuel"> <poi category="Gas stations"/> </rule>
+  </rules>
+  
+</osmmag>
