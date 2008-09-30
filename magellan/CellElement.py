@@ -25,7 +25,7 @@ class CellElement(object):
     def __init__(self, coords):
         self.cellnum = None
         self.excess = ""
-        self._coords = None
+        self._coords = coords
         
     def __eq__(self, x):
         return self.wkt ==  x.wkt
@@ -647,12 +647,25 @@ class CellElementArea(CellElement):
         return self.__class__.__name__ + '(' + ','.join(args) + ')'
 
 class CellElementPolyline(CellElementLineStringbase):
+    """Polyline cell element
+
+    Attributes 
+    ----------
+    
+    unk -- Unknown but for roads it has something to do with its condition
+    
+    routingvertexindices -- List of indices 
+    
+    """
     typecode=13
+    exportfields = CellElement.exportfields + ['unk', 'routingvertexindices']
 
     def __init__(self, coords=None, objtype=None, textslot=None):
         super(CellElementPolyline, self).__init__(coords)
         self.objtype = objtype
         self.textslot = textslot
+        self.unk = None
+        self.routingvertexindices = []
 
     def __eq__(self, x):
         return self.wkt ==  x.wkt and self.objtype == x.objtype and self.textslot == x.textslot
@@ -664,6 +677,11 @@ class CellElementPolyline(CellElementLineStringbase):
 
     def __hash__(self):
         return CellElement.__hash__(self) ^ hash(self.objtype)
+
+    @property
+    def distance(self):
+        coords = N.array(self._coords)
+        return N.sum(N.sqrt(N.sum(N.diff(coords, axis=0)**2,axis=1)))
 
     def deSerialize(self, cell, data, bigendian):
         prefix = bigendian2prefix[bigendian]
@@ -733,15 +751,21 @@ class CellElementPolyline(CellElementLineStringbase):
         data = self._deserialize_textslot(data, bigendian,
                                         last=False, onlyindex=True)
 
-        self.excess = data
+        ## Get routing information
 
-        if len(self.excess) > 0:
-            if self.textslot:
-                textslottext = "0x%x"%self.textslot
-            else:
-                textslottext = "None"
-#            print "excess: ",dump(self.excess), 'len(vlist):', len(vlist), \
-#                'objtype:', self.objtype, textslottext, cell.cellnum
+        extrainfo = list(unpack('%dB'%len(data), data))
+
+        if len(extrainfo) % 2 == 1:
+            self.unk = extrainfo.pop(0)
+        
+        if len(extrainfo) > 0:
+            self.routingvertexindices = []
+            for i, byte in enumerate(reversed(extrainfo)):
+                for biti in range(8):
+                    if byte & (1 << biti):
+                        self.routingvertexindices.append(8 * i + biti)
+
+            assert(self.routingvertexindices[-1] < len(vlist))
 
     def serialize(self, cell, bigendian):
         prefix = bigendian2prefix[bigendian]
@@ -804,42 +828,122 @@ class CellElementPolyline(CellElementLineStringbase):
         return data        
 
 class CellElementRouting(CellElementLineStringbase):
-    typecode=17
-    exportfields = CellElement.exportfields + ['restrictions', 'distance', 'startpoint', 'endpoint', 'cellnumref', 
-                                               'numincellref', 'flagsh', 'unk1', 'unk2', 'orientation']
-    FlagForward = 0x40          ## The traffice direction is from point 1 to point 2
-    FlagMultiPartStart = 0x2    ## The arc is going from the first to an intermediate vertex in the polyline
+    """Routing network edge
+
+    Attributes
+    ----------
+
+    layernumref -- Layer index to referenced cell element
+    ivertex -- Tuple of start and end point vertex indices in referenced cell element
     
-    def __init__(self, coords=None, objtype=None, textslot=None):
+    restrictions -- A vector of length 4 with turn restrictions where the items have the following order:
+      [endpointrestr, startpointrestr, endpointrestr, startpointrestr]
+      The meaning of the values are:
+
+      ===== =====================================================
+      value description
+      ===== =====================================================
+      3     up, down forbidden
+      12    left, right forbidden
+      
+    orientation -- A tuple with the angles of the start and end points of the polyline
+         
+      ===== ===========
+      angle value
+      ===== ===========
+      -135  1
+      -90   0
+      -45   7
+      0     6
+      45    5
+      90    4
+      135   3
+      180   2
+
+    segmentflags -- Bit mask
+         
+      ========= ===========
+      roadflags value
+      ========= ===========
+      4         freeway
+      8         roundabout
+
+    segmenttype --
+
+      ========== ===========
+      segmettype value
+      ========== ===========
+      1          ramp
+      4          ramp
+  
+
+    bidirectional -- True if traffic can go in both directions
+    reversedir -- Traffic goes from second to first vertex
+    nodeindices -- Tuple with edge indices for the first and second vertex
+
+    """
+
+    
+    typecode=17
+    exportfields = CellElement.exportfields + ['restrictions', 'distance', 'ivertices', 'cellnumref', 
+                                               'numincellref', 'flagsh', 'unk1', 'unk2', 'orientation', 'edgeindices',
+                                               'segmenttype', 'segmentflags' ]
+    FlagBidirectional = 0x80    
+    FlagForward = 0x40          ## The traffice direction is from point 1 to point 2
+    
+    def __init__(self, coords=None,
+                 layernumref = None, cellnumref = None, numincellref = None,
+                 ivertices = (None, None),
+                 bidirectional=True, reversedir = False, edgeindices = (None, None),
+                 orientations=(0,0),
+                 segmentflags = 0, speedcat = 0, segmenttype = 0, distance = 0):
         CellElement.__init__(self, coords)
-        self.objtype = objtype
-        self.textslot = textslot
+
+        self.layernumref = layernumref
+        self.cellnumref = cellnumref
+        self.numincellref = numincellref
+        self.ivertices = ivertices
+        self.bidirectional = bidirectional
+        self.reversedir = reversedir
+        self.edgeindices = edgeindices
+        self.segmentflags = segmentflags
+        self.speedcat = speedcat
+        self.segmenttype = segmenttype
+        self.distance = int(distance)
+        self.restrictions = (0,0,0,0)
+        self.orientations = orientations
+        self.unk1 = 0
+        self.unk2 = 0
 
     def __eq__(self, x):
-        return self.wkt ==  x.wkt and self.objtype == x.objtype and self.textslot == x.textslot
+        return self.cellnum == x.cellnum and self.numincell == x.numincell and self.self.wkt ==  x.wkt
     def __hash__(self):
         return hash(self.wkt) ^ hash(self.excess) ^ hash(self.objtype) ^ hash(self.textslot)
 
     def __repr__(self):
-        return self.__class__.__name__ + ' dist: %d, points: %d-%d, c: %d, n: %d, flags: 0x%x, u1: %d, u2: %d, restrictions:%s, excess: %s'%(
-            self.distance, self.startpoint, self.endpoint, self.cellnumref, self.numincellref, self.flags, self.unk1, self.unk2, str(self.restrictions), dump(self.excess))
+        return self.__class__.__name__ + ' dist: %d, points: %d-%d, l:%s, c: %d, n: %d, bidir: %s, reverse: %s, edgeindices: %s, u1: %d, u2: %d, restrictions:%s, orientations:(%d,%d), excess: %s'%(
+            self.distance, self.ivertices[0], self.ivertices[1], self.layernumref, self.cellnumref, self.numincellref, str(self.bidirectional), 
+            str(self.reversedir), str(self.edgeindices), self.unk1, self.unk2, str(self.restrictions), self.orientations[0],
+            self.orientations[1], dump(self.excess))
 
     @property
     def flagsh(self):
-        return '0x%x'%self.flags
-    @property
-    def orientation(self):
-        return '0x%x'%self._orientation
+        flags = []
+        if self.bidirectional:
+            flags.append('bidir')
+        if self.reversedir:
+            flags.append('reverse')
+        return ','.join(flags)
 
     def __eq__(self, x):
-        return CellElement.__eq__(self,x) and self.objtype==x.objtype
+        return CellElement.__eq__(self,x)
 
     def __hash__(self):
-        return CellElement.__hash__(self) ^ hash(self.objtype)
+        return CellElement.__hash__(self)
 
     def deSerialize(self, cell, data, bigendian):
         prefix = bigendian2prefix[bigendian]
-        
+
         bbox, data = self._deserialize_bbox(cell, data, bigendian)
 
         (tmp1, tmp2) = unpack(prefix+'II', data[:8])
@@ -850,8 +954,7 @@ class CellElementRouting(CellElementLineStringbase):
 
         self.layernumref = (tmp2 >> 28) - 8
         self.unk2 = (tmp2 >> 24) & 0xf
-        self.startpoint = (tmp2 >> 13) & 0x7ff
-        self.endpoint = (tmp2 & 0x1fff)
+        self.ivertices = ((tmp2 >> 13) & 0x7ff, tmp2 & 0x1fff)
 
         (self.cellnumref, self.numincellref) = unpack(prefix+'IH', data[:6])
         data = data[6:]
@@ -859,10 +962,14 @@ class CellElementRouting(CellElementLineStringbase):
         self.restrictions = unpack(prefix+'BBBB', data[:4])
         data = data[4:]
 
-        (self.flags,) = unpack(prefix+'B', data[:1])
+        (tmp,) = unpack('B', data[:1])
+        self.bidirectional = bool(tmp & 0x80)
+        self.reversedir = bool(tmp & 0x40)
+        self.edgeindices = tmp & 0x7, (tmp >> 3) & 0x7
         data = data[1:]
         
-        (self._orientation,) = unpack(prefix+'B', data[:1])
+        (tmp,) = unpack(prefix+'B', data[:1])
+        self.orientations = tmp & 0x7, (tmp >> 3) & 0x7
         data = data[1:]
 
         if self.pointcorners == 6:
@@ -883,15 +990,50 @@ class CellElementRouting(CellElementLineStringbase):
         self._coords = tuple([(v[0],-v[1]) for v in cell.relToAbsCoords([p1, p2])])
 
         self.unknown2 = repr(self)
-        self.excess = data
 
-
+        if len(data) > 0:
+            (tmp,) = unpack('B', data[-1])
+            self.segmentflags, self.speedcat = tmp >> 4, tmp & 0xf
+        if len(data) == 2:
+            (tmp,) = unpack('B', data[0])
+            self.segmenttype = tmp
+            
     def serialize(self, cell, bigendian):
         prefix = bigendian2prefix[bigendian]
         
         data, bbox = self._serialize_bbox(cell, bigendian)
 
-        data += self.excess
+        p1, p2 = cell.absToRelCoords([[p[0], -p[1]] for p in self._coords])
+
+        if (p1 == bbox.ur).all() and (p2 == bbox.ll).all():
+            pointcorners = 6
+        elif (p1 == bbox.ul).all() and (p2 == bbox.lr).all():
+            pointcorners = 4
+        elif (p1 == bbox.lr).all() and (p2 == bbox.ul).all():
+            pointcorners = 2
+        elif (p1 == bbox.ll).all() and (p2 == bbox.ur).all():
+            pointcorners = 0
+        else:
+            raise Exception('Cannot determine pointcorners')
+
+        data += pack(prefix + 'II',
+             (self.unk1 << 24) | (pointcorners << 29) | (self.distance & 0xffffff),
+             ((self.layernumref + 8) << 28) | (self.unk2 << 24) | (self.ivertices[0] << 13) | self.ivertices[1])
+
+        data += pack(prefix + 'IH', self.cellnumref, self.numincellref)
+
+        data += pack(prefix + 'BBBB', *self.restrictions)
+
+        tmp = int(self.bidirectional) << 7 | int(self.reversedir) << 6 | self.edgeindices[1] << 3 | self.edgeindices[0]
+        data += pack('B', tmp)
+
+        data += pack('B', self.orientations[1] << 3 | self.orientations[0])
+
+        if self.segmenttype != None:
+            data += pack('B', self.segmenttype)
+
+        if self.segmentflags != None and self.speedcat != None:
+            data += pack('B', self.segmentflags << 4 | self.speedcat & 0xf)
         
         return data        
 

@@ -164,7 +164,7 @@ class LayerStyle(object):
 
     style = property(getStyle, setStyle, doc='style')
 
-    def __repr__(self):
+    def __str__(self):
         def visrange(range):
             return str([zoomlevels[x] for x in range])
         s = ''
@@ -514,6 +514,7 @@ class Layer(object):
             fhidx = self.map.mapdir.open(self.indexfilename, "r")
 
             self.cellfilepos = {}
+            self.cellnumbers = []
             while 1:
                 data = fhidx.read(12)
 
@@ -654,6 +655,11 @@ class Layer(object):
             for s in c.getCellElements():
                 yield s
 	
+    def getCellElementsAndRefs(self):
+        for c in self.getCells():
+            for nincell, s in enumerate(c.getCellElements()):
+                yield (s, (c.cellnum, nincell))
+	
     def getCellElement(self, cellref):
         """Get cell element from a (cellnum, num_in_cell) pair """
         (cellnum, num_in_cell) = cellref
@@ -671,7 +677,7 @@ class Layer(object):
     def addCellElement(self, cellelem, cellnum = None):
         """Add cell element to layer. The element might be divided into smaller elements.
          Returns list of (cellnum,# in cell) pairs"""
-
+        
         if self.mode == 'r':
             raise ValueError("Cannot add cellelement when opened in read only mode")
 
@@ -823,7 +829,8 @@ class Layer(object):
         """Return the number of cells in the layer"""
         return len(self.cellnumbers)
 
-    def __repr__(self):
+    @property
+    def info(self):
         res = "Name: "+self.getName()+"\n"
         res += "Number of objects: "+str(self.getNObjects())+"\n"
         res += "Number of cells: "+str(len(self.cellnumbers))+"\n"
@@ -835,7 +842,7 @@ class Layer(object):
             res += "Identifier: 0x%x\n"%self.fileidentifier
         res += "# of levels: %d\n"%self.nlevels
         res += "category: %d\n"%self.category
-        if self.layertype:
+        if self.layertype != None:
             res += "layertype: %d\n"%self.layertype
         res += 'reflat: %f\n'%self._refpoint[1]
         res += 'reflon: %f\n'%self._refpoint[0]
@@ -846,8 +853,8 @@ class Layer(object):
         return res
 
 
-    def __str__(self):
-        return self.getName()
+    def __repr__(self):
+        return self.__class__.__name__ + '(' + self.getName() + ')'
 
 class LayerParamEstimator(object):
     """Class that gather statistics and estimates parameters such as nlevels and bounding box"""

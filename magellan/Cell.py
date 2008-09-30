@@ -101,13 +101,16 @@ class Cell(object):
     def _deserialize(self, data):
         cellelements = []
         ncellelements, nskip = self.layer.unpack("2H",data)
+        
+        if nskip != 0:
+            raise Exception('Layer is probably packed, cannot read')
 
         data = data[4:]
 
         if self.layer.map.debug:
             print "Cell#:%d ncellelements:%d"%(self.cellnum,ncellelements)
 
-        for cellelementnum in range(0,ncellelements-nskip):
+        for cellelementnum in range(0, ncellelements-nskip):
             cellelementsizespec, precisionspec = self.layer.unpack("HB",data)
             data = data[2:]
 

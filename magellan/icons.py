@@ -164,11 +164,13 @@ class SecurityData(object):
 
         print ["0x%x (%c)"%(ord(x),x) for x in data]
         fields = unpack(">IiiI12s20s12sI", data)
-
+        
+        print fields
+        
         signature = fields[3]
         
         if signature != self.signature:
-            raise ValueError("Invalid signature 0x%x"%signature)
+            raise ValueError("Invalid signature 0x%x should be"%(signature, self.signature))
 
 
         self.first = fields[0]

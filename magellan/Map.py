@@ -16,6 +16,8 @@ from inifile import ConfigParserUpper, IniFileFilter
 import mapdir
 import numpy as N
 import logging
+from misc import cfg_readlist, cfg_writelist
+import routing
 
 def createMap(dir, **kvargs):
     return Map(mapdir.MapDirectory(dir), **kvargs)
@@ -59,8 +61,9 @@ def decodeintlist(s):
     return l[1:]    
 
 ## Constants
-MapTypeMapsend = 1
-MapTypeImage = 2
+MapTypeNormal = None
+MapTypeMarine = 'NAV_MARINE'
+MapTypeStreetRoute = 'STR_ROUTE'
 
 # Class Map
 class Map(object):
@@ -68,8 +71,10 @@ class Map(object):
 
     defaultscale = N.array([9e-6, 9e-6])
     
-    def __init__(self, mapdirobj = None, maptype = MapTypeImage, mapnumber=0, bigendian = False, inifile = None):
-        self._maptype = maptype
+    def __init__(self, mapdirobj = None, gpsimage = True, maptype = MapTypeNormal, 
+                 mapnumber=0, bigendian = False, inifile = None):
+        self.gpsimage = gpsimage
+        self.maptype = maptype
         self._mapnumber = mapnumber
         
         if mapdirobj == None:
@@ -90,7 +95,12 @@ class Map(object):
         self._inifile = inifile
 
         self.inmemory = False ## If true all processing will be done in memory
-
+        
+        if maptype == MapTypeStreetRoute:
+            self.routingcfg = routing.RoutingConfig()
+        else:
+            self.routingcfg = None
+        
         ## Set endian
         self.bigendian = bigendian
 
@@ -138,11 +148,6 @@ class Map(object):
 
         ## Update config
         self._updatecfg()
-
-    @property
-    def maptype(self):
-        """Type of map"""
-        return self._maptype
 
     def set_scale(self, scale):
         """Set discrete unit as a xscale, yscale sequence"""
@@ -199,7 +204,7 @@ class Map(object):
         self.mode = mode
 
         if mode == 'w':
-            if self._maptype == MapTypeImage:
+            if self.gpsimage:
                 if self._inifile == None:
                     self._inifile = self.mapnumstr + 'map.ini'
 
@@ -238,6 +243,9 @@ class Map(object):
                     raise ValueError('Could not find ini-file')
 
             self._cfg.readfp(IniFileFilter(self.mapdir.open(self._inifile)))
+
+            # Get map type
+            self.maptype = self._cfg.get("MAP_INFO", "MAPTYPE")
 
             # Get bounding box
             bbox = map(float, self._cfg.get("MAP_INFO", "BND_BOX").split(" "))
@@ -286,6 +294,11 @@ class Map(object):
 
                     self._poiconfig.setupfromcfg(self.poicfg, self)
 
+            # Read routing info
+            if self.maptype == MapTypeStreetRoute:
+                self.routingcfg = routing.RoutingConfig()
+                self.routingcfg.setupfromcfg(self._cfg, self)
+
     def calculatebbox(self):
         """Calculate total bounding box rectangle from layers"""
 
@@ -309,6 +322,16 @@ class Map(object):
 
         logging.info('Optimizing cell structure')
 
+        ## Create routing layers and build routing network
+        if self.maptype == MapTypeStreetRoute:
+            if self.mode == 'w':
+                self.routingcfg.createRoutingEdgeLayers(self)
+
+                self.build_routing_network(self)
+                
+            elif self.mode == 'a':
+                raise Exception('Updating of routing network not implemented')
+        
         ## Optimize layers in groups
         remaininglayers = list(self.layers + self._poiconfig.layers)
         if self.groups != None:
@@ -356,8 +379,7 @@ class Map(object):
 
         # Close layers
         self._laycfg.close()
-
-
+        
         # Write ini file
         if write:
             # Convert section keys to uppercase
@@ -515,6 +537,9 @@ class Map(object):
         if self._db:
             self._cfg.set('LAYERS', 'DB_NAME', self._db.name)
         
+        ## Write routing config
+        if self.maptype == MapTypeStreetRoute:
+            self.routingcfg.writecfg(self._cfg, self)
 
         # Write bounding box and bounding rectangle
         bboxrec = self.bboxrec
@@ -621,7 +646,7 @@ class MapImage(object):
     def writeconfig(self):
         ## Create add_maps.cfg
         addmapscfg = self.mapdir.open('add_maps.cfg', 'w')
-        addmapscfg.write('%d '%len(self._maps) + " ".join([m.inifilename for m in self._maps]) + '\n')
+        addmapscfg.write(cfg_writelist([m.inifilename for m in self._maps]) + '\n')
         addmapscfg.close()
 
     def close(self):
