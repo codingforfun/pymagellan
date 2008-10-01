@@ -777,7 +777,7 @@ class CellElementPolyline(CellElementLineStringbase):
         vlist = cell.absToRelCoords(vlist)
 
         data += self._serialize_textslotoffset(bigendian, last=len(self.excess)==0)
-        data += pack(prefix+"B", self.objtype)
+        data += pack("B", self.objtype)
 
         nvertices = len(vlist)
         cdata = ""
@@ -846,7 +846,7 @@ class CellElementRouting(CellElementLineStringbase):
       3     up, down forbidden
       12    left, right forbidden
       
-    orientation -- A tuple with the angles of the start and end points of the polyline
+    orientations -- A tuple with the angles of the start and end points of the polyline
          
       ===== ===========
       angle value
@@ -886,7 +886,7 @@ class CellElementRouting(CellElementLineStringbase):
     
     typecode=17
     exportfields = CellElement.exportfields + ['restrictions', 'distance', 'ivertices', 'cellnumref', 
-                                               'numincellref', 'flagsh', 'unk1', 'unk2', 'orientation', 'edgeindices',
+                                               'numincellref', 'flagsh', 'unk1', 'unk2', 'orientations', 'edgeindices',
                                                'segmenttype', 'segmentflags' ]
     FlagBidirectional = 0x80    
     FlagForward = 0x40          ## The traffice direction is from point 1 to point 2
@@ -957,8 +957,9 @@ class CellElementRouting(CellElementLineStringbase):
         self.ivertices = ((tmp2 >> 13) & 0x7ff, tmp2 & 0x1fff)
 
         (self.cellnumref, self.numincellref) = unpack(prefix+'IH', data[:6])
+        self.numincellref -= 1
         data = data[6:]
-        
+
         self.restrictions = unpack(prefix+'BBBB', data[:4])
         data = data[4:]
 
@@ -1017,10 +1018,10 @@ class CellElementRouting(CellElementLineStringbase):
             raise Exception('Cannot determine pointcorners')
 
         data += pack(prefix + 'II',
-             (self.unk1 << 24) | (pointcorners << 29) | (self.distance & 0xffffff),
+             ((self.unk1 & 0x1f) << 24) | (pointcorners << 29) | (self.distance & 0xffffff),
              ((self.layernumref + 8) << 28) | (self.unk2 << 24) | (self.ivertices[0] << 13) | self.ivertices[1])
 
-        data += pack(prefix + 'IH', self.cellnumref, self.numincellref)
+        data += pack(prefix + 'IH', self.cellnumref, self.numincellref+1)
 
         data += pack(prefix + 'BBBB', *self.restrictions)
 

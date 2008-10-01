@@ -14,6 +14,7 @@ version = '0.0'
 def osmmag(outfile, osmfiles = [], bbox=None, topo=None, name=None, inmemory=True, rulefile=None,
            nametaglist = None, bigendian = False,
            topostartscale = None, topointervals = None,
+           routable = False,
            scale = None):
            
     logging.info('Loading rules: %s'%rulefile)
@@ -42,7 +43,13 @@ def osmmag(outfile, osmfiles = [], bbox=None, topo=None, name=None, inmemory=Tru
                 osmfiles = [filename]
 
             for osmfile in osmfiles:
-                m = rules.createMap(mi.createMap())
+                if routable:
+                    logging.info('Creating routable map')
+                    maptype = Map.MapTypeStreetRoute
+                else:
+                    maptype = Map.MapTypeNormal
+
+                m = rules.createMap(mi.createMap(maptype=maptype), routable = routable)
 
                 m.inmemory = inmemory
 
@@ -148,7 +155,9 @@ def main():
     parser.add_option('-d', '--disk', dest='inmemory', action='store_false', default=True,
                       help='Preserve memory by storing geometries on disk')
     
-    
+    parser.add_option('--routable', dest='routable', action='store_true', default=False,
+                      help='Create routable map')
+
     (options, osmfiles) = parser.parse_args()
 
     if len(osmfiles) == 0 and options.bbox == None:
@@ -172,6 +181,7 @@ def main():
            topo=options.topo,
            topostartscale=options.topostartscale,
            topointervals=options.topointervals,
+           routable=options.routable,
            scale=options.scale,
            bigendian=options.bigendian
            )            

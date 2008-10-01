@@ -49,7 +49,7 @@ class RoutingConfig(object):
         self.routingedgelayers = []
         self.alternatelayers = []
         self.speeds = {}
-        self.nprimarylayers = 0
+        self.nprimarylayers = None
 
     def setupfromcfg(self, cfg, mapobj):
         """Read routing section from ini-file"""
@@ -81,6 +81,12 @@ class RoutingConfig(object):
         
         self.nprimarylayers = int(cfg.get('ROUTING', 'PRIM_LS_QTY'))
     
+    def minset(self, layer):
+        """Find minimum routing set the layer is a member of"""
+        for i, rset in enumerate(self.routingsets):
+            if layer in rset:
+                return i
+
     def writecfg(self, cfg, mapobj):
         """Write routing section to ini-file
 
@@ -88,39 +94,35 @@ class RoutingConfig(object):
         >>> m = Map.Map()
         >>> rcfg = RoutingConfig()
         >>> f = m.addLayer(Layer.Layer(m, 'freeway', 'freeway', layertype = Layer.LayerTypePolyline))
+        >>> rcfg.addRoutingLayer(m, f, 0)
+        >>> r = m.addLayer(Layer.Layer(m, 'road', 'road', layertype = Layer.LayerTypePolyline))
+        >>> rcfg.addRoutingLayer(m, r, 1)
         >>> s = m.addLayer(Layer.Layer(m, 'streets', 'streets', layertype = Layer.LayerTypePolyline))
-        >>> rcfg.addRoutingLayer(s, 2)
-        >>> rcfg.addRoutingLayer(f, 0)
-        >>> rcfg.createRoutingEdgeLayers(m)
+        >>> rcfg.addRoutingLayer(m, s, 2)
         >>> cfg = ConfigParser.SafeConfigParser()
         >>> rcfg.writecfg(cfg, m)
         >>> cfg.write(sys.stdout)
         [ROUTING]
-        routing_grp = 2 1 0
-        rdb_layers = 2 3 4
+        alt_lays = 0 
+        routing_grp = 3 0 2 4
+        rdb_layers = 1 3 5
         speed_lay_den_0 = 1
-        speed_lay_den_1 = 1
-        speed_lay_num_1 = 1
+        speed_lay_num_4 = 1
+        speed_lay_den_2 = 1
+        speed_lay_den_4 = 1
         speed_lay_num_0 = 1
-        routing_sets = 3 1 1 2
-        lay_dirs = N N
+        routing_sets = 3 1 2 3
+        speed_lay_num_2 = 1
+        lay_dirs = N N N
         <BLANKLINE>
-        >>> m.layers
-        (Layer(freeway), Layer(streets), Layer(Rte0), Layer(Rte1), Layer(Rte2))
 
         """
 
         if not cfg.has_section('ROUTING'):
             cfg.add_section('ROUTING')
 
-        def minset(layer):
-            """Find minimum routing set the layer is a member of"""
-            for i, rset in enumerate(self.routingsets):
-                if layer in rset:
-                    return i
-
         def layercmp(a,b):
-            return cmp(minset(b), minset(a))
+            return cmp(self.minset(a), self.minset(b))
 
         ## Sort routing layers according to routing set membership
         self.routinglayers.sort(layercmp)
@@ -131,16 +133,33 @@ class RoutingConfig(object):
         routingsetlengths = [len(rset) for rset in self.routingsets]
         cfg.set('ROUTING', 'ROUTING_SETS', cfg_writelist(routingsetlengths))
 
-        cfg.set('ROUTING', 'LAY_DIRS', ' '.join([self.directions[layer] for layer in self.routinglayers]))
+        cfg.set('ROUTING', 'LAY_DIRS',
+                ' '.join([self.directions[layer] for layer in self.routinglayers]))
 
         for layer, speed in self.speeds.items():
             for i, numden in enumerate(('NUM', 'DEN')):
-                cfg.set('ROUTING', 'SPEED_LAY_%s_%d'%(numden, mapobj.getLayerIndex(layer)), str(speed[i]))
+                cfg.set('ROUTING', 'SPEED_LAY_%s_%d'%(numden, mapobj.getLayerIndex(layer)), \
+                        str(speed[i]))
         
         cfg.set('ROUTING', 'RDB_LAYERS', \
                 ' '.join([str(mapobj.getLayerIndex(layer)) for layer in self.routingedgelayers]))
 
-    def addRoutingLayer(self, layer, routingsetnumber, direction = 'N', speed = (1, 1)):
+        cfg.set('ROUTING', 'ALT_LAYS',
+                cfg_writelist(map(mapobj.getLayerIndex, self.alternatelayers)))
+
+        if self.nprimarylayers == None:
+            cfg.set('ROUTING', 'PRIM_LS_QTY', str(len(self.routinglayers)))
+        else:
+            cfg.set('ROUTING', 'PRIM_LS_QTY', str(self.nprimarylayers))
+
+    def updateRoutingSets(self):
+        """This will check for routing set inconsistencies and fix them"""
+        for layer in self.routinglayers:
+            for rset in self.routingsets[self.minset(layer):]:
+                if layer not in rset:
+                    rset.append(layer)
+
+    def addRoutingLayer(self, mapobject, layer, routingsetnumber, direction = 'N', speed = (1, 1)):
         if layer.layertype != Layer.LayerTypePolyline:
             raise ValueError('Only polyline layers can be added to routing network')
 
@@ -149,22 +168,27 @@ class RoutingConfig(object):
             for i in range(routingsetnumber - len(self.routingsets) + 1):
                 self.routingsets.append([])
 
+        self.updateRoutingSets()
+                
         self.routinglayers.append(layer)
 
         for rset in self.routingsets[routingsetnumber:len(self.routingsets)]:
             rset.append(layer)
+
+        self.createRoutingEdgeLayers(mapobject)
 
         self.directions[layer] = direction
 
         self.speeds[layer] = speed
 
     def createRoutingEdgeLayers(self, mapobject):
-        if len(self.routingedgelayers) == 0:
-            for i, rset in enumerate(self.routingsets):
+        if len(self.routingedgelayers) != len(self.routingsets):
+            for i in range(len(self.routingedgelayers), len(self.routingsets)):
                 name = 'Rte%d'%i
                 filename = name.lower()
                 layer = Layer.Layer(mapobject, name, filename, layertype = Layer.LayerTypeRouting)
-                mapobject.addLayer(layer)
+                mapobject.addLayer(layer, Layer.RoutingLayerStyle())
+                layer.open('w')
                 self.routingedgelayers.append(layer)
                 
     def build_routing_network(self, mapobj):
@@ -199,11 +223,7 @@ class RoutingConfig(object):
                                                          orientations = cellelement2orientations(cellelement),
                                                          distance = distance(cellelement, istartvertex, iendvertex, layer)
                                                          )
-            data = routingedge.serialize(layer.getCell(ceref[0]), False)
-
-            newedge = CellElement.CellElementRouting()
-            newedge.deSerialize(layer.getCell(ceref[0]), data, False)
-            assert routingedge == newedge
+            self.routingedgelayers[irset].addCellElement(routingedge)
             
         ## Dictionary that keep track of the maximum edge number for each routing node
         nedges = {}

@@ -57,12 +57,16 @@ class OSMMagRules(object):
 
       return result
 
-    def createMap(self, mapobj = None):
+    def createMap(self, mapobj = None, routable=False):
       """Create a Magellan map from rules"""
       if mapobj == None:
-        m = Map.Map(maptype = Map.MapTypeImage)
+          if routable:
+              maptype = Map.MapTypeStreetRoute
+          else:
+              maptype = None
+          m = Map.Map(maptype=maptype)
       else:
-        m = mapobj
+          m = mapobj
 
       m.open("w")
 
@@ -99,6 +103,10 @@ class OSMMagRules(object):
               set_visibility(layerstyle, visibilitypresets[layerelem.get("visibilitypreset")])
           else:
             set_visibility(layerstyle, layerelem)
+
+          ## Add routing layer
+          if routable and layerelem.get("routingset"):
+              m.addRoutingLayer(l, int(layerelem.get("routingset")))
 
           ## Set draw order priority
           if layerelem.get("draworder"):

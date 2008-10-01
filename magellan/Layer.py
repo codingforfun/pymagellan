@@ -45,6 +45,10 @@ fillstyles = ['SOLID_FILL', 'BOX_PATT', 'DOT_FILL', 'DASH_FILL', 'NO_FILL', 'SLA
               'MDEPTH_AREA' ]
 
 styles = linestyles + pointstyles + fillstyles
+
+LayerPurposeNormal = 20
+LayerPurposeRoutingEdge = 2000
+LayerPurposeTOD = 200
         
 class LayerStyle(object):
     """
@@ -68,6 +72,9 @@ class LayerStyle(object):
     hidebasemaprange = [(0,0),(0,0),(0,0),(0,0),(0,0)]
     color = 'BLACK'
     validcolors = colors
+    visible = True
+    purpose = LayerPurposeNormal
+    
     _style = 'US_INTERSTATE_HW_LINE'
     def __init__(self, layerinfostr=None, style=None, color=None):
         if layerinfostr:
@@ -180,6 +187,10 @@ class LayerStyle(object):
         s += toRSTtable([['Detail level', 'Visible range', 'Label visible range', 'Hide basemap range']]+data)
         return s
 
+class RoutingLayerStyle(LayerStyle):
+    purpose = LayerPurposeRoutingEdge
+    visible = False
+
 class DetailMapLayerStyle(LayerStyle):
     visiblerange = [(0,7),(0,6),(0,5),(0,5),(0,5)]
     labelrange = [(0,7),(0,6),(0,5),(0,5),(0,5)]
@@ -253,7 +264,9 @@ class LayerConfig(object):
             else:
                 groupindex = -1
             
-            out=[layer.getName(), layer.getFileName(), '20', '1', str(groupindex)]
+            out=[layer.getName(), layer.getFileName(), str(self._layerstyle[i].purpose),
+                 str(int(self._layerstyle[i].visible)), str(groupindex)]
+
             if self._layerstyle.has_key(i):
                 out.append(self._layerstyle[i].inistr)
             cfg.set('LAYERS',str(i)," ".join(out))
@@ -678,8 +691,8 @@ class Layer(object):
         """Add cell element to layer. The element might be divided into smaller elements.
          Returns list of (cellnum,# in cell) pairs"""
         
-        if self.mode == 'r':
-            raise ValueError("Cannot add cellelement when opened in read only mode")
+        if self.mode in ('r', None):
+            raise ValueError('Layer must be opened in write or append mode to add cell elements')
 
         if self._bbox != None:
             if cellnum == None:
@@ -687,8 +700,8 @@ class Layer(object):
                                                      cellelem.bboxrec.negY(),
                                                      self.nlevels)
 
-            assert cellelem.bboxrec.iscoveredby(self.bboxrec, xmargin=self._scale[0], ymargin=self._scale[1]), "CellElement is outside layer boundaries:" + \
-                   str(self.bboxrec) + " cellelement:" + str(cellelem.bboxrec)
+#            assert cellelem.bboxrec.iscoveredby(self.bboxrec, xmargin=self._scale[0], ymargin=self._scale[1]), "CellElement is outside layer boundaries:" + \
+#                   str(self.bboxrec) + " cellelement:" + str(cellelem.bboxrec)
         else:
             if self.nlevels > 0:
                 raise ValueError('Cannot add cell element to layer with nlevels>0 and no bounding box')

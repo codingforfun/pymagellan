@@ -71,19 +71,19 @@ class Map(object):
 
     defaultscale = N.array([9e-6, 9e-6])
     
-    def __init__(self, mapdirobj = None, gpsimage = True, maptype = MapTypeNormal, 
+    def __init__(self, mapdirobj = None, gpsimage = True, maptype = MapTypeNormal,
                  mapnumber=0, bigendian = False, inifile = None):
         self.gpsimage = gpsimage
         self.maptype = maptype
         self._mapnumber = mapnumber
-        
+
         if mapdirobj == None:
             self.mapdir = mapdir.MapDirectory()
         else:
             if not isinstance(mapdirobj, mapdir.MapDirectory):
                 raise ValueError("mapdirobj should be a MapDirectory object")
             self.mapdir = mapdirobj
-        
+
         self.name = "Map"
 
         self.mode = None      # Open mode ['r','w','a']
@@ -95,12 +95,12 @@ class Map(object):
         self._inifile = inifile
 
         self.inmemory = False ## If true all processing will be done in memory
-        
+
         if maptype == MapTypeStreetRoute:
             self.routingcfg = routing.RoutingConfig()
         else:
             self.routingcfg = None
-        
+
         ## Set endian
         self.bigendian = bigendian
 
@@ -320,19 +320,9 @@ class Map(object):
         
         write = self.mode in ['a','w']
 
-        logging.info('Optimizing cell structure')
-
-        ## Create routing layers and build routing network
-        if self.maptype == MapTypeStreetRoute:
-            if self.mode == 'w':
-                self.routingcfg.createRoutingEdgeLayers(self)
-
-                self.build_routing_network(self)
-                
-            elif self.mode == 'a':
-                raise Exception('Updating of routing network not implemented')
         
         ## Optimize layers in groups
+        logging.info('Optimizing cell structure of normal layers')
         remaininglayers = list(self.layers + self._poiconfig.layers)
         if self.groups != None:
             for group in self.groups:
@@ -340,7 +330,18 @@ class Map(object):
                 for layer in group.layers:
                     remaininglayers.remove(layer)
 
+        ## Create routing layers and build routing network
+        if self.maptype == MapTypeStreetRoute:
+            if self.mode == 'w':
+                logging.info('Building routing network')
+                self.routingcfg.build_routing_network(self)
+                
+            elif self.mode == 'a':
+                raise Exception('Updating of routing network not implemented')
+
         ## Optimize remaining layers
+        if self.maptype == MapTypeStreetRoute:
+            logging.info('Optimizing cell structure of routing layers')
         for layer in remaininglayers:
             layer.optimize()
 
@@ -356,6 +357,7 @@ class Map(object):
             self._updatecfg()        
 
         ## Copy bounding box from map for layers without one
+        logging.info('Closing map')
         for layer in self.layers + self._poiconfig.layers:
             if layer.bboxrec == None:
                 layer.bboxrec = self.bboxrec
@@ -494,6 +496,11 @@ class Map(object):
         self.writeToMapDir(image)
         return image
 
+    def addRoutingLayer(self, layer, routingsetnumber, direction = 'N', speed = (1, 1)):
+        if self.maptype != MapTypeStreetRoute:
+            raise ValueError('Map is not of type street route')
+        self.routingcfg.addRoutingLayer(self, layer, routingsetnumber, direction = 'N', speed = (1, 1))
+       
     def _updatecfg(self):
         """Update cfg data"""
 
@@ -536,7 +543,10 @@ class Map(object):
 
         if self._db:
             self._cfg.set('LAYERS', 'DB_NAME', self._db.name)
-        
+            
+        if self.maptype:
+            self._cfg.set('MAP_INFO', 'MAPTYPE', self.maptype)
+
         ## Write routing config
         if self.maptype == MapTypeStreetRoute:
             self.routingcfg.writecfg(self._cfg, self)
@@ -608,11 +618,11 @@ class MapImage(object):
             self._topo = Topo(self.mapdir)
         self._topo.addblx(blxfile, bigendian=self._bigendian)
 
-    def createMap(self):
+    def createMap(self, *args, **kvargs):
         """Create a new map and return the new Map object"""
 
         if self.mode in ('a', 'w'):
-            m = Map(self.mapdir, mapnumber = len(self._maps), bigendian=self._bigendian)
+            m = Map(self.mapdir, mapnumber = len(self._maps), bigendian=self._bigendian, **kvargs)
             m.open('w')
             self._maps.append(m)
             return self._maps[-1]
