@@ -9,7 +9,7 @@ The rule file syntax is described in doc/rules.txt
 from sets import Set
 
 import magellan.Map as Map, magellan.Layer as Layer
-from magellan.SearchGroup import GroupNormal
+from magellan.SearchGroup import GroupNormal, GroupStreet
 from magellan.POI import POICategory, POISubCategory
 
 try:
@@ -72,11 +72,16 @@ class OSMMagRules(object):
 
       m.name = self.root.find("name").text
 
+      routingedgelayers = []
+
       ## Create groups
       for groupelem in self.root.find("groups").findall("group"):
         ## Create group
-        g = GroupNormal(m, name=m.mapnumstr + '_' + groupelem.get("name"))
-
+        if groupelem.get("streetgroup") == 'true':
+            g = GroupStreet(m, name=m.mapnumstr + '_' + groupelem.get("name"))
+        else:
+            g = GroupNormal(m, name=m.mapnumstr + '_' + groupelem.get("name"))
+        
         try:
           m.addGroup(g)
         except ValueError:
@@ -106,7 +111,7 @@ class OSMMagRules(object):
 
           ## Add routing layer
           if routable and layerelem.get("routingset"):
-              m.addRoutingLayer(l, int(layerelem.get("routingset")))
+              routingedgelayers.append((l, int(layerelem.get("routingset"))))
 
           ## Set draw order priority
           if layerelem.get("draworder"):
@@ -118,6 +123,8 @@ class OSMMagRules(object):
           layerstyle.verify(l.name, m)
 
           l.open('w')
+
+
 
       ## Create POI categories
       if self.root.find("poicategories") != None:
@@ -149,6 +156,11 @@ class OSMMagRules(object):
             cat.addSubCategory(POISubCategory("NOSUB1000"))
 
           group.addCategory(cat, icon = catelem.get('icon'))
+          
+      ## Add routing edge layers
+      for l, rset in routingedgelayers:
+          m.addRoutingLayer(l, rset)
+
 
       return m
 

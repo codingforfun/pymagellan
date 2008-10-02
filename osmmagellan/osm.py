@@ -20,8 +20,7 @@ except:
 import char
 
 import magellan.Map as Map, magellan.Layer as Layer
-from magellan.SearchGroup import Feature,FeatureNormal,FeatureStreet, \
-    GroupNormal
+from magellan.SearchGroup import Feature,FeatureNormal,FeatureStreet
 from magellan.CellElement import CellElementPolyline, CellElementArea, \
     CellElementPoint, CellElementPOI
 from magellan.POI import POICategory, POISubCategory, FeaturePOI

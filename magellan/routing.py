@@ -44,7 +44,7 @@ class RoutingConfig(object):
     
     def __init__(self):
         self.routinglayers = []
-        self.routingsets = []
+        self.routingsets = [[],[],[]] ## Minimum of 3 routing sets
         self.directions = {}
         self.routingedgelayers = []
         self.alternatelayers = []
@@ -181,6 +181,9 @@ class RoutingConfig(object):
 
         self.speeds[layer] = speed
 
+    def addAlternateLayer(self, layer):
+        self.alternatelayers.append(layer)        
+
     def createRoutingEdgeLayers(self, mapobject):
         if len(self.routingedgelayers) != len(self.routingsets):
             for i in range(len(self.routingedgelayers), len(self.routingsets)):
@@ -288,6 +291,12 @@ class RoutingConfig(object):
                         else:
                             nedges[vertex] = nvertices
 
+        ## If there is no alternate roads layer, create one
+        if len(self.alternatelayers) == 0:
+            altlay = Layer.Layer(mapobj, 'Alternate_RDS', 'altstr', layertype = Layer.LayerTypePolyline)
+            mapobj.addLayer(altlay)
+            self.addAlternateLayer(altlay)
+            altlay.open('w')
             
     def __repr__(self):
         s = ''

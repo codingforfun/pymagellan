@@ -382,7 +382,6 @@ class GroupStreet(GroupNormal):
     extrafields = [
         FieldStruct(name='FLD0', fd_type=FieldTypeLONGINT),
         FieldStruct(name='FLD1', fd_type=FieldTypeLONGINT),
-        FieldStruct(name='FLD2', fd_type=FieldTypeLONGINT)
         ]
     def __init__(self, map, name=None):
         GroupNormal.__init__(self, map, name=name)
@@ -403,7 +402,7 @@ class GroupStreet(GroupNormal):
         zipindex = rec['FLD0']
 
         streetNumBeg = rec['FLD1']
-        streetNumEnd = rec['FLD2']
+        streetNumEnd = streetNumBeg
 
         return FeatureStreet(feature.layerindex, feature.getCellElementRefs(),
                              feature.name, feature.getObjtype(),
@@ -484,14 +483,23 @@ def groupFactory(map, groupnumber, inicfg, db):
     else:
         return GroupNormal(map)
 
-def buildziprecord(db, zipfilename = 'z.dat', auxfilename = 'cn.dat'):
+def buildziprecord(db, zipfilename = 'z.dat', auxfilename = 'cn.dat', extended = False):
     """Create zip tables in database"""
     if not ('Z_R' in db.getTableNames() or 'C_R' in db.getTableNames()):
         # Build zip table
-        fields = [
-            FieldStruct(name='ZIP_CODE', fd_type=FieldTypeLONGINT),
-            FieldStruct(name='C_REF', fd_type=FieldTypeLONGINT),
-            ]
+        if extended:
+            fields = [
+                FieldStruct(name='ZIP_CODE', fd_type=FieldTypeLONGINT),
+                FieldStruct(name='C_REF', fd_type=FieldTypeLONGINT),
+                FieldStruct(name='SET_REF', fd_type=FieldTypeLONGINT),
+                FieldStruct(name='STAT_REF', fd_type=FieldTypeLONGINT),
+                ]
+        else:
+            fields = [
+                FieldStruct(name='ZIP_CODE', fd_type=FieldTypeLONGINT),
+                FieldStruct(name='C_REF', fd_type=FieldTypeLONGINT),
+                ]
+
         db.addTable(name='Z_R',
                     filename=zipfilename,
                     fieldstructlist=fields)
@@ -502,3 +510,30 @@ def buildziprecord(db, zipfilename = 'z.dat', auxfilename = 'cn.dat'):
             ]
         db.addTable(name='C_R', filename=auxfilename,
                     fieldstructlist=fields)
+
+def buildmarinerecord(db, filenameprefix=''):
+    """Create marine tables in database"""
+    if not Set(['MRN_ATTR', 'MRN_TXT', 'MRN_VAL']).issubset(Set(db.getTableNames())):
+
+        fields = [
+            FieldStruct(name='NNAMEREF', fd_type=FieldTypeLONGINT),
+            FieldStruct(name='NTYPE', fd_type=FieldTypeCHARACTER),
+            FieldStruct(name='NUNIT', fd_type=FieldTypeCHARACTER)
+            ]
+        db.addTable(name='MRN_ATTR', filename = filenameprefix + 'm_attr.dat', fieldstructlist=fields)
+
+        fields = [
+            FieldStruct(name='NAME_BUF', fd_type=FieldTypeCHARACTER, fd_dim1=248, fd_dim2=1)
+            ]
+        db.addTable(name='MRN_TXT', filename = filenameprefix + 'm_txt.dat', fieldstructlist=fields)
+
+        fields = [
+            FieldStruct(name='VAL_BUF', fd_type=FieldTypeCHARACTER, fd_dim1=248, fd_dim2=1)
+            ]
+        db.addTable(name='MRN_VAL', filename = filenameprefix + 'm_val.dat', fieldstructlist=fields)
+
+
+
+
+
+    

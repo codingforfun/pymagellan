@@ -7,7 +7,7 @@ import sys
 import shutil
 import DBUtil
 from DBUtil import Database
-from SearchGroup import Group, GroupNormal, GroupStreet, groupFactory, buildziprecord
+from SearchGroup import Group, GroupNormal, GroupStreet, groupFactory, buildziprecord, buildmarinerecord
 from POI import POIGroup, POILayerConfig, createPOITables, POILayerStyle
 from Layer import Layer,LayerTypePOI,LayerStyle, DetailMapLayerStyle, LayerConfig
 from CellElement import Rec
@@ -92,6 +92,8 @@ class Map(object):
 
         self.has_zip = True
 
+        self.has_marine = (maptype == MapTypeStreetRoute)
+
         self._inifile = inifile
 
         self.inmemory = False ## If true all processing will be done in memory
@@ -110,7 +112,11 @@ class Map(object):
         self._searchgroups = [] ## Searchable group indices
 
         # Tables
-        self._ziptables = (0,0)
+        if maptype == MapTypeStreetRoute:
+            self._ziptables = (0,1,0,0)
+        else:
+            self._ziptables = (0,0)
+        self._marinetables = (0,1,0,1)
 
         ## Bounding box and bounding rect
         self._bboxrec = None
@@ -215,10 +221,19 @@ class Map(object):
                 if self.has_zip:
                     buildziprecord(self._db,
                                    zipfilename = self.mapnumstr + 'z.dat',
-                                   auxfilename = self.mapnumstr + 'cn.dat')
+                                   auxfilename = self.mapnumstr + 'cn.dat',
+                                   extended = self.maptype == MapTypeStreetRoute)
+
+                ## Create marine table
+                if self.has_marine:
+                    buildmarinerecord(self._db,
+                                   filenameprefix = self.mapnumstr)
 
                 ## Create basic groups
-                roads = GroupNormal(self, name=self.mapnumstr + "_Roads")
+                if self.maptype == MapTypeStreetRoute:
+                    roads = GroupStreet(self, name=self.mapnumstr + "_Roads")
+                else:
+                    roads = GroupNormal(self, name=self.mapnumstr + "_Roads")
                 roads.searchable = True
                 self.addGroup(roads)
                 self.addGroup(GroupNormal(self, name=self.mapnumstr + "_Railroads"))
@@ -253,6 +268,7 @@ class Map(object):
 
             # Get map name
             self.name = self._cfg.get('MAP_INFO', 'MAP_NAME')
+#            self.date = self._cfg.get('MAP_INFO', 'MAP_DATE')
 
             self._laycfg.setupfromcfg(self._cfg, self)
             
@@ -338,6 +354,10 @@ class Map(object):
                 
             elif self.mode == 'a':
                 raise Exception('Updating of routing network not implemented')
+
+            ## Copying routing data file
+            self.mapdir.copyfile(os.path.join(datadir, 'routing.dat'))
+
 
         ## Optimize remaining layers
         if self.maptype == MapTypeStreetRoute:
@@ -529,6 +549,8 @@ class Map(object):
             self._cfg.set('TABLES','ZIP_TABLE', ' '.join(map(str, self._ziptables)))
         else:
             self._cfg.set('TABLES','ZIP_TABLE', '-1')
+        if self.has_marine:
+            self._cfg.set('TABLES','MARINE_TABLE', ' '.join(map(str, self._marinetables)))
 
         ## Write layers
         self._laycfg.writecfg(self._cfg, self)
