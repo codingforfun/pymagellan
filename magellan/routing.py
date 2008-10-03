@@ -209,6 +209,7 @@ class RoutingConfig(object):
             for layer in layers:
                 for cellelement in layer.getCellElements():
                     coords = cellelement.coords
+                    ## Iterate over start and end point
                     for coord in coords[0], coords[-1]:
                         if coord not in nodes:
                             nodes[coord] = irset
@@ -224,9 +225,12 @@ class RoutingConfig(object):
                                                          ivertices =  (istartvertex, iendvertex),
                                                          edgeindices = (startnode_edgenum, endnode_edgenum),
                                                          orientations = cellelement2orientations(cellelement),
-                                                         distance = distance(cellelement, istartvertex, iendvertex, layer)
+                                                         distance = distance(cellelement, istartvertex, iendvertex, layer),
+                                                         speedcat = 1,
+                                                         segmentflags = 4,
+                                                         bidirectional = False
                                                          )
-            self.routingedgelayers[irset].addCellElement(routingedge)
+            self.routingedgelayers[iroutingset].addCellElement(routingedge)
             
         ## Dictionary that keep track of the maximum edge number for each routing node
         nedges = {}

@@ -473,6 +473,8 @@ class Map(object):
         return self._laycfg.layers
 
     def addLayer(self, layer, layerstyle = DetailMapLayerStyle()):
+        if layer.filename in [l.filename for l in self._laycfg.layers]:
+            raise Exception('Filename %s of layer %s is already used by another layer'%(l.filename, l.name))
         self._laycfg.addLayer(layer, layerstyle = layerstyle)
         return layer
 

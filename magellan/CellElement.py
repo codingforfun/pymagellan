@@ -896,7 +896,7 @@ class CellElementRouting(CellElementLineStringbase):
                  ivertices = (None, None),
                  bidirectional=True, reversedir = False, edgeindices = (None, None),
                  orientations=(0,0),
-                 segmentflags = 0, speedcat = 0, segmenttype = 0, distance = 0):
+                 segmentflags = None, speedcat = None, segmenttype = None, distance = 0):
         CellElement.__init__(self, coords)
 
         self.layernumref = layernumref
