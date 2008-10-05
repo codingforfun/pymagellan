@@ -14,6 +14,13 @@ bigendian2prefix = {True: '>', False: '<'}
 #
 # Description:
 class CellElement(object):
+    """Cell element base class
+
+    init arguments
+    --------------
+    coords -- discrete coordinates, obtained from the float2discrete method of the Layer class
+
+    """
     geometrytype = None
     typecode=0
     exportfields = ['cellnum', 'excessdump']
@@ -25,7 +32,17 @@ class CellElement(object):
     def __init__(self, coords):
         self.cellnum = None
         self.excess = ""
-        self._coords = coords
+        self._coords = coords ## Discrete coordinates
+
+    @classmethod
+    def fromfloat(cls, layer, coords, *args, **kvargs):
+        """Constructor that expect float coordinates instead of discrete"""
+        if coords != None:
+            coords = layer.float2discrete(coords)
+        return cls(coords, *args, **kvargs)
+
+    def floatcoords(self, layer):
+        return layer.discrete2float(self._coords)
         
     def __eq__(self, x):
         return self.wkt ==  x.wkt
@@ -57,20 +74,14 @@ class CellElement(object):
         return wkt.precision_wkt(self, 5)
 
     @property
-    def bboxrec(self):
+    def dbboxrec(self):
         minx,miny,maxx,maxy = self.bounds
         return Rec(N.array([minx,miny]), N.array([maxx,maxy]))
 
-    def discretizeGeometry(self, cell):
-        if self.geometrytype=='LineString':
-            vlist=[[p[0], -p[1]] for p in self._coords]
-            vlist = cell.absToRelCoords(vlist)
-            vlist = cell.relToAbsCoords(vlist)
-            self._coords = tuple([(v[0],-v[1]) for v in vlist])
-        elif self.geometrytype=='Point':
-            [v]=cell.absToRelCoords([[self.x, -self.y]])
-            [v]=cell.relToAbsCoords([v])
-            self._coords = (v[0],-v[1])
+    def bboxrec(self, layer):
+        minx,miny,maxx,maxy = self.bounds
+        ul, lr = layer.discrete2float(((minx,miny), (maxx,maxy)))
+        return Rec(ul, lr)
 
     def setObjTypeIndex(self, objtypeindex):
         self.objtype = objtype
@@ -189,11 +200,11 @@ class CellElement(object):
     
     def _serialize_bbox(self, cell, bigendian):
         prefix = bigendian2prefix[bigendian]
-        
+
         (minx,miny,maxx,maxy) = self.bounds
         # Negate sign of y-coordinate
         [c1,c2] = cell.absToRelCoords([[minx,-maxy],[maxx,-miny]])
-
+        
         bbox = Rec(c1,c2)
         prec,data = self._encodecoord(bbox.c1[0], bigendian)
 
@@ -225,6 +236,7 @@ class CellElement(object):
 
     def _encodecoord(self, c, bigendian):
         prefix = bigendian2prefix[bigendian]
+
         if c < 0:
             raise ValueError("Absolute coordinates are always positive, c = %f"%c)
         if c == 0:
@@ -263,8 +275,15 @@ class CellElementPointbase(CellElement):
 
     def __init__(self, coords=None):
         super(CellElementPointbase, self).__init__(coords)
-        if coords:
+        if coords != None:
             self._coords = tuple(map(float, coords))
+
+    @classmethod
+    def fromfloat(cls, layer, coords, *args, **kvargs):
+        """Constructor that expect float coordinates instead of discrete"""
+        if coords != None:
+            [coords] = layer.float2discrete((coords,))
+        return cls(coords, *args, **kvargs)
 
     @property
     def x(self):
@@ -289,7 +308,7 @@ class CellElementLineStringbase(CellElement):
 
     >>> l = CellElementLineStringbase([[0,1],[3,4],[4,5]])
     >>> l
-    CellElementLineStringbase(((0.0, 1.0), (3.0, 4.0), (4.0, 5.0)))
+    CellElementLineStringbase(((0, 1), (3, 4), (4, 5)))
     >>> l.wkt
     'LINESTRING(0.00000 1.00000,3.00000 4.00000,4.00000 5.00000)'
     
@@ -298,8 +317,8 @@ class CellElementLineStringbase(CellElement):
 
     def __init__(self, coords=None):
         super(CellElementLineStringbase, self).__init__(coords)
-        if coords:
-            self._coords = tuple([tuple(map(float, c)) for c in coords])
+        if coords != None:
+            self._coords = tuple([tuple(map(int, c)) for c in coords])
 
     @property
     def bounds(self):
@@ -307,7 +326,7 @@ class CellElementLineStringbase(CellElement):
 
         >>> l = CellElementLineStringbase([[0,1],[3,4],[4,5]])
         >>> l.bounds
-        (0.0, 1.0, 4.0, 5.0)
+        (0, 1, 4, 5)
         """
         coords = N.array(self._coords)
         return tuple(coords.min(0)) + tuple(coords.max(0))
@@ -411,12 +430,6 @@ class CellElementArea(CellElement):
     geometrytype = 'Polygon'
     typecode=12
 
-    def __iter__(self):
-        return iter(self._coords)
-
-    def __eq__(self, x):
-        return self.wkt ==  x.wkt and self.objtype == x.objtype and self.textslot==x.textslot
-
     def __init__(self, coords=None, objtype=None, textslot=None):
         CellElement.__init__(self, coords)
         if coords:
@@ -431,12 +444,25 @@ class CellElementArea(CellElement):
                 if len(p) <= 2:
                     raise ValueError('Area must at least contain 3 vertices')
             try:
-                self._coords = tuple([tuple([tuple(map(float, c)) for c in p]) for p in newcoords])
+                self._coords = tuple([tuple([tuple(c) for c in p]) for p in newcoords])
             except:
                 raise ValueError('coords should be in [[[a1x, a1y], [a2x, a2y], ...], [[b1x, b1y], [b2x, b2y], ...]] format ')
         self.objtype = objtype
         self.textslot = textslot
         self.cornerdata = []
+
+    @classmethod
+    def fromfloat(cls, layer, coords, *args, **kvargs):
+        """Constructor that expect float coordinates instead of discrete"""
+        if coords != None:
+            coords = [layer.float2discrete(part) for part in coords]
+        return cls(coords, *args, **kvargs)
+
+    def __iter__(self):
+        return iter(self._coords)
+
+    def __eq__(self, x):
+        return self.wkt ==  x.wkt and self.objtype == x.objtype and self.textslot==x.textslot
 
     @property
     def bounds(self):
@@ -660,12 +686,16 @@ class CellElementPolyline(CellElementLineStringbase):
     typecode=13
     exportfields = CellElement.exportfields + ['unk', 'routingvertexindices']
 
-    def __init__(self, coords=None, objtype=None, textslot=None):
+    def __init__(self, coords=None, objtype=None, textslot=None, routingvertexindices=(), unk = None):
+        ## Add more vertices if needed to avoid overflows in the delta encoder
+        if coords != None:
+            coords = vlistinterpolate(coords)
         super(CellElementPolyline, self).__init__(coords)
+
         self.objtype = objtype
         self.textslot = textslot
-        self.unk = None
-        self.routingvertexindices = []
+        self.unk = unk
+        self.routingvertexindices = list(routingvertexindices)
 
     def __eq__(self, x):
         return self.wkt ==  x.wkt and self.objtype == x.objtype and self.textslot == x.textslot
@@ -769,7 +799,7 @@ class CellElementPolyline(CellElementLineStringbase):
 
     def serialize(self, cell, bigendian):
         prefix = bigendian2prefix[bigendian]
-        
+
         data, bbox = self._serialize_bbox(cell, bigendian)
 
         vlist=[[p[0], -p[1]] for p in self._coords]
@@ -812,10 +842,9 @@ class CellElementPolyline(CellElementLineStringbase):
                 polytype = 2
                 cdata = pack(prefix+"2B", *map(int, idelta))
 
-        deltadata, newvertices = encodedeltaslow(vlist)
+        delta = list(N.diff(N.array(vlist), axis=0).flat)
 
-        cdata += deltadata
-        nvertices += newvertices
+        cdata += pack("%db" % len(delta), *delta)
 
         data = data + \
                pack(prefix+"H", (polytype << 13) | nvertices)
@@ -823,8 +852,22 @@ class CellElementPolyline(CellElementLineStringbase):
 
         data += self._serialize_textslot(bigendian, last=len(self.excess)==0, onlyindex=True)
 
-        data += self.excess
-        
+
+        ## Add routing data
+        if self.unk != None:
+            data += pack('B', self.unk)
+
+        extradata = []
+        for vtxindex in self.routingvertexindices:
+            byte = vtxindex // 8
+            bit = vtxindex % 8
+
+            if byte >= len(extradata):
+                extradata += [0,0]
+
+            extradata[byte] |= 1 << bit
+        data += pack('%dB'%len(extradata), *extradata)
+                                             
         return data        
 
 class CellElementRouting(CellElementLineStringbase):
@@ -1199,6 +1242,29 @@ def encodedeltaslow(vlist):
 
     return cdata, nvertices
 
+def vlistinterpolate(vlist):
+    r'''Return a list of vertices where the difference between adjacent vertices is in the range [-128, 172]
+
+       Returns new vlist
+         where n is the number of inserted vertices
+
+       >>> vlistinterpolate([N.array([1,1]), N.array([0,2]), N.array([0,3])])
+       [array([1, 1]), array([0, 2]), array([0, 3])]
+       >>> vlistinterpolate([N.array([1,1]), N.array([0,2]), N.array([200., 2.])])
+       [array([1, 1]), array([0, 2]), array([ 127.,    2.]), array([ 200.,    2.])]
+              
+
+       '''
+    position = vlist[0]
+    newvlist = [position]
+    for nextvertex in vlist[1:]:
+        done=0
+        while not done:
+            idelta,position,done = deltaint(position, nextvertex, 127)
+            newvlist.append(position)
+
+    return newvlist
+
 def encodedelta(vlist):
     r'''Encode a list of vertices as the difference between adjacents vertices.
        The result is a string of signed bytes: vlist[1][0]-vlist[0][0], vlist[1][1]-vlist[0][1], vlist[2][0]-vlist[1][0], ...
@@ -1231,6 +1297,7 @@ def encodedelta(vlist):
             nextvertex = vlist[row+1]
             done=0
             extendeddiffs = []
+            extendedpositions = []
             while not done:
                 idelta,position,done = deltaint(position, nextvertex, 127)
                 extendeddiffs.append(idelta)

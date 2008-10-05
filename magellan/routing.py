@@ -224,10 +224,11 @@ class RoutingConfig(object):
                                                          numincellref = ceref[1],
                                                          ivertices =  (istartvertex, iendvertex),
                                                          edgeindices = (startnode_edgenum, endnode_edgenum),
-                                                         orientations = cellelement2orientations(cellelement),
+                                                         orientations = cellelement2orientations(cellelement, \
+                                                                                                 istartvertex, iendvertex, layer),
                                                          distance = distance(cellelement, istartvertex, iendvertex, layer),
-                                                         speedcat = 1,
-                                                         segmentflags = 4,
+                                                         speedcat = None,
+                                                         segmentflags = None,
                                                          bidirectional = False
                                                          )
             self.routingedgelayers[iroutingset].addCellElement(routingedge)
@@ -342,9 +343,11 @@ def angle(p1, p2):
     v = p2-p1
     return atan2(v[0], v[1]) * 180 / N.pi
 
-def cellelement2orientations(cellelement):
+def cellelement2orientations(cellelement, istartvertex, iendvertex, layer):
     r = []
-    for points in (cellelement.coords[0:2], cellelement.coords[-1:-3:-1]):
+    n = len(cellelement.coords)
+    for points in (layer.discrete2float(cellelement.coords[istartvertex:istartvertex+2]),
+                   layer.discrete2float(cellelement.coords[iendvertex-n:iendvertex-n-2:-1])):
         r.append(angle2orientation(angle(*points)))
     return tuple(r)
 
@@ -407,7 +410,7 @@ def distance(cellelement, start, end, layer):
     if not isinstance(cellelement, CellElement.CellElement):
         raise ValueError("CellElement expected")
     
-    coords = [wgs84_to_sweref99.TransformPoint(*v) for v in cellelement.coords[start:end+1]]
+    coords = [wgs84_to_sweref99.TransformPoint(*v) for v in layer.discrete2float(cellelement.coords[start:end+1])]
     return N.sum(N.sqrt(N.sum(N.diff(coords, axis=0)**2,axis=1)))
         
 if __name__ == "__main__":

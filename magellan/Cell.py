@@ -31,16 +31,15 @@ class Cell(object):
         raise NotImplementError
 
     def absToRelCoords(self, points):
-        """Convert absolute continous to relative (to cell) discrete coordinates"""
-        discrete = ((N.array(points) - self.layer.refpoint) / self.layer.scale).round().astype(int)
-        return list(discrete - self._dbbox.c1)
+        """Convert discrete absolute coordinates to cell relative discrete coordinates"""
+        return list(N.array(points) - self._dbbox.c1)
         
 #    [(((p-self.layer.bbox.c1)/scale).round()-self._dbbox.c1).astype(int) for p in points]
 #        return [((p-self._dbbox.c1)/scale).round().astype(int) for p in points]
 
     def relToAbsCoords(self, points):
         """Convert relative (to cell) discrete to absolute continous coordinates"""
-        return N.array(points) * self.layer.scale + self._bbox.c1
+        return N.array(points) + self._dbbox.c1
 
     def setbbox(self):
         if self.layer._dbbox == None:

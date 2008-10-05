@@ -100,18 +100,20 @@ class LoadOsm(handler.ContentHandler):
           assert(layer.layertype == Layer.LayerTypePolyline)
           if len(self.waynodes) < 2:
             return
-          cellelement = CellElementPolyline([self.nodes[ref] for ref in self.waynodes], 
-                                            objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype))
+          cellelement = CellElementPolyline.fromfloat(layer,[self.nodes[ref] for ref in self.waynodes], 
+                                            objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype),
+                                            unk=0xa7)
         elif statement.tag == 'polygon':
           assert(layer.layertype == Layer.LayerTypePolygon)
           try:
-            cellelement = CellElementArea(([self.nodes[ref] for ref in self.waynodes],), 
+            cellelement = CellElementArea.fromfloat(layer, ([self.nodes[ref] for ref in self.waynodes],), 
                                           objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype))
           except ValueError:
             return
         elif statement.tag == 'point':
           assert(layer.layertype == Layer.LayerTypePoint)
-          cellelement = CellElementPoint(self.lastnodecoord, objtype = group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype))
+          cellelement = CellElementPoint.fromfloat(layer, self.lastnodecoord,
+                                                   objtype = group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype))
 
         cellelementrefs = layer.addCellElement(cellelement)
 
@@ -133,7 +135,7 @@ class LoadOsm(handler.ContentHandler):
         cat = poigroup.catman.getCategoryByName(category)
         subcat = cat.getSubCategoryByName(subcategory)
 
-        poice = CellElementPOI(self.lastnodecoord, categoryid=cat.id, subcategoryid=subcat.id)
+        poice = CellElementPOI.fromfloat(poilayer, self.lastnodecoord, categoryid=cat.id, subcategoryid=subcat.id)
 
         name = self._findname(matchingstatements)        
 

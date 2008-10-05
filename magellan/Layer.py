@@ -428,9 +428,9 @@ class Layer(object):
 
             logging.debug("Optimizing layer "+self.name)
 
-            bboxrec = self.estimator.calculateBBox()
-            if bboxrec:
-                self.bboxrec = bboxrec
+            dbboxrec = self.estimator.calculateDBBox()
+            if dbboxrec:
+                self.dbboxrec = dbboxrec
 
             ## Get nlevels estimate
             self.nlevels = self.estimator.calculateNlevels()
@@ -697,11 +697,11 @@ class Layer(object):
         if self._bbox != None:
             if cellnum == None:
                 cellnum = max_cellno_containing_bbox(self._bbox,
-                                                     cellelem.bboxrec.negY(),
+                                                     cellelem.bboxrec(self).negY(),
                                                      self.nlevels)
 
-#            assert cellelem.bboxrec.iscoveredby(self.bboxrec, xmargin=self._scale[0], ymargin=self._scale[1]), "CellElement is outside layer boundaries:" + \
-#                   str(self.bboxrec) + " cellelement:" + str(cellelem.bboxrec)
+#            assert cellelem.bboxrec(self).iscoveredby(self.bboxrec(self), xmargin=self._scale[0], ymargin=self._scale[1]), "CellElement is outside layer boundaries:" + \
+#                   str(self.bboxrec(self)) + " cellelement:" + str(cellelem.bboxrec(self))
         else:
             if self.nlevels > 0:
                 raise ValueError('Cannot add cell element to layer with nlevels>0 and no bounding box')
@@ -714,7 +714,7 @@ class Layer(object):
         cell = self.getCell(cellnum)
 
         # Check that cell element is contained by cell
-        ##assert cellelem.bboxrec.iscoveredby(cell.bboxrec, xmargin=self._scale[0], ymargin=self._scale[1])
+        #assert cellelem.bboxrec(self).iscoveredby(cell.bboxrec(self), xmargin=self._scale[0], ymargin=self._scale[1])
         
         nincell = cell.addCellElement(cellelem)
 
@@ -766,6 +766,30 @@ class Layer(object):
                 self.addCellElement(e)            
 
     bboxrec = property(get_bboxrec, set_bboxrec, "Bounding box rectangle")
+
+    def get_dbboxrec(self):
+        if self._dbbox:
+            return self._dbbox
+        else:
+            return None
+    def set_dbboxrec(self, drec):
+        if self.mode == 'r':
+            raise ValueError("Can't change boundary rectangle in read-only mode")
+
+        self._dbbox = drec.negY()
+        self._bbox = self._dbbox.tocontinous(self._refpoint, self._scale)
+
+        # If in append mode all cell elements must be re-added to fit the new
+        # cell boundaries
+        if self.mode == 'a':
+            cellelements = [e for e in self.getCellElements()]
+            
+            self.clearCells()
+
+            for e in cellelements:
+                self.addCellElement(e)            
+
+    dbboxrec = property(get_dbboxrec, set_dbboxrec, "Bounding box rectangle discrete coordinates")
 
     @property
     def refpoint(self): return self._refpoint
@@ -866,6 +890,14 @@ class Layer(object):
         return res
 
 
+    def float2discrete(self, points):
+        """Convert list of coordinates from floating point to discrete coordinates"""
+        return ((N.array(points) - self.refpoint) / self.scale).round().astype(int)
+
+    def discrete2float(self, points):
+        """Convert list of coordinates from discrete to floating point coordinates"""
+        return N.array(points) * self.scale + self.refpoint
+    
     def __repr__(self):
         return self.__class__.__name__ + '(' + self.getName() + ')'
 
@@ -882,14 +914,13 @@ class LayerParamEstimator(object):
 
         self.verbose = False
 
-        self.bboxmin = N.array([180.0, 90.0])
-        self.bboxmax = N.array([-180.0, -90.0])
+        self.dbboxmin, self.dbboxmax = layer.float2discrete((N.array([180.0, 90.0]), N.array([-180.0, -90.0])))
         
     def addCellElement(self, cellelement):
-        bbox = cellelement.bboxrec
+        bbox = cellelement.dbboxrec
 
-        self.bboxmin = N.minimum(bbox.c1, self.bboxmin)
-        self.bboxmax = N.maximum(bbox.c2, self.bboxmax)
+        self.dbboxmin = N.minimum(bbox.c1, self.dbboxmin)
+        self.dbboxmax = N.maximum(bbox.c2, self.dbboxmax)
         
         self.data.append((bbox, cellelement.estimate_size()))
 
@@ -941,17 +972,17 @@ class LayerParamEstimator(object):
         raise Exception('Could not determine number of cell levels of layer'%self.layer.name)
 
 
-    def calculateBBox(self):
-        """Calculate estimated bounding box of layer"""
-        if N.alltrue(self.bboxmin == N.array([180.0, 90.0])):
+    def calculateDBBox(self):
+        """Calculate estimated bounding box of layer in discrete coordinates"""
+        if N.alltrue(self.dbboxmin == self.layer.float2discrete((N.array([180.0, 90.0]),))):
             return None
 
-        bbox = Rec(self.bboxmin, self.bboxmax)
+        dbbox = Rec(self.dbboxmin, self.dbboxmax)
          
         if self.verbose:
-            print "Estimated bbox", bbox
+            print "Estimated discretebbox", dbbox
         
-        return bbox
+        return dbbox
 
 ###############################################################################
 # Helper functions 
