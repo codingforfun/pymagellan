@@ -22,13 +22,13 @@ import char
 import magellan.Map as Map, magellan.Layer as Layer
 from magellan.SearchGroup import Feature,FeatureNormal,FeatureStreet
 from magellan.CellElement import CellElementPolyline, CellElementArea, \
-    CellElementPoint, CellElementPOI
+    CellElementPoint, CellElementPOI, RoutingAttributes
 from magellan.POI import POICategory, POISubCategory, FeaturePOI
 
 class LoadOsm(handler.ContentHandler):
   """Parse an OSM file and add features to a Map"""
 
-  def __init__(self, filename, rules, mapobj, nametags = None):
+  def __init__(self, filename, rules, mapobj, nametags = None, routable = False):
     """Initialise an OSM-file parser"""
 
     self.nodes = {}
@@ -38,6 +38,7 @@ class LoadOsm(handler.ContentHandler):
     self.poicount = 0
     self.nametags = nametags
     self.stop = False
+    self.routable = routable
       
     self.charmap = char.UnicodeTranslator()
 
@@ -101,8 +102,30 @@ class LoadOsm(handler.ContentHandler):
           if len(self.waynodes) < 2:
             return
           cellelement = CellElementPolyline.fromfloat(layer,[self.nodes[ref] for ref in self.waynodes], 
-                                            objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype),
-                                            unk=0xa7)
+                                                      objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype),
+                                                      unk=0xa7)
+          if self.routable:
+              routingelements = matchingstatements.findall("routing")
+
+              ra = RoutingAttributes()
+              ra.segmentflags = 0
+              ra.speedcat = 0
+              cellelement.routingattributes = ra
+              
+              for routing in matchingstatements.findall("routing"):
+                  for key, value in routing.items():
+                      if key == 'oneway':
+                          ra.bidirectional = value != 'on'
+                      elif key == 'freeway':
+                          ra.freeway = (value == 'on')
+
+              if 'junction' in self.tags and self.tags['junction'] == 'roundabout':
+                  ra.roundabout = True
+                  ra.bidirectional = False
+
+              if 'oneway' in self.tags and self.tags['oneway'] == 'yes':
+                  ra.bidirectional = False
+              
         elif statement.tag == 'polygon':
           assert(layer.layertype == Layer.LayerTypePolygon)
           try:

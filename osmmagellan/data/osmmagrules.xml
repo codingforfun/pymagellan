@@ -8,10 +8,12 @@
     <group name="Roads" searchgroup="true">
       <layers>
 	<layer name="Freeways" filename="fwy" color="BLACK" style="US_INTERSTATE_HW_LINE" type="polyline" draworder="10"
-	       routingset="0"/> 
+	       routingset="0">
+	</layer>
 	<layer name="Major_Highways" filename="mj_hwy" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
-	       visibilitypreset="freeway" draworder="20" routingset="0"
-	       />
+	       visibilitypreset="freeway" draworder="20" routingset="0">
+	  <routing freeway="no" oneway="no"/>
+	</layer>
 	<layer name="Minor_Highways" filename="mn_hwy" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
 	       visibilitypreset="freeway" draworder="20" routingset="1" />
 	<layer name="Major_Roads" filename="maj" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
@@ -147,7 +149,7 @@
     <rule e="way" k="landuse" v="farm"> <polygon layer="Farm"/> </rule>
     
     <!-- Roads and streets -->
-    <rule e="way" k="highway" v="motorway|motorway_link"> <polyline layer="Freeways"/> </rule>
+    <rule e="way" k="highway" v="motorway|motorway_link"> <polyline layer="Freeways"/> <routing freeway="yes" oneway="yes"/> </rule>
     <rule e="way" k="highway" v="trunk|trunk_link"> <polyline layer="Major_Highways"/> </rule> 
     <rule e="way" k="highway" v="primary"> <polyline layer="Minor_Highways"/> </rule> 
     <rule e="way" k="highway" v="primary_link"> <polyline layer="Minor_Highways"/> </rule> 

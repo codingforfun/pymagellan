@@ -58,7 +58,7 @@ def osmmag(outfile, osmfiles = [], bbox=None, topo=None, name=None, inmemory=Tru
 
                 logging.info('Reading osm data and creating map')
 
-                data = osm.LoadOsm(osmfile, rules, m, nametags = nametaglist)
+                data = osm.LoadOsm(osmfile, rules, m, nametags = nametaglist, routable = routable)
 
                 if name:
                     m.name = name

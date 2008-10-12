@@ -11,26 +11,33 @@ groups
 ------
 This element contains one or more group elements which in turn contains layers and attributes. The attributes element is optional and contains what attributes except for the feature name the layer will have. Currently the attributes element is not implemented in the code.
 
-The layers sub element contains layer elements which defines the name type and how the layers are drawn. The following tags are valid:
+The layers sub element contains layer elements which defines the name type and how the layers are drawn. 
 
-================ ===========================================================
-Tag              Description
-================ ===========================================================
-name             The name of the layer
-type             Tells what type of layer it is. Possible values are:
-	         "polygon", "polyline" and "point"
-filename         The name of the file inside the image
-color            The drawn color. Possible values are: BLACK, WHITE
-	         DARK_GRAY, LIGHT_GRAY, GRAY, CYAN, RED, ORANGE, 
-	         BLUE, GREEN, PAIL_GREEN, PAIL_YELLOW, YELLOW, 
-	         DARK_RED, MAGENTA, BROWN, DARK_BLUE
-style            Tells how the geometries will be drawn. See the next table for
-                 possible values
-visibilitypreset This refers to the name of visibility presets which
-		 tells at what zoom level the layer and its labels are visible
-draworder        An integer that determines in what order the layer will be 
-		 drawn. The layer with the lowest value will be drawn first
-================ ===========================================================
+layer
+-----
+=================== ===========================================================
+Tag                 Description
+=================== ===========================================================
+name                The name of the layer
+type                Tells what type of layer it is. Possible values are:
+	            "polygon", "polyline" and "point"
+filename            The name of the file inside the image
+color               The drawn color. Possible values are: BLACK, WHITE
+	            DARK_GRAY, LIGHT_GRAY, GRAY, CYAN, RED, ORANGE, 
+	            BLUE, GREEN, PAIL_GREEN, PAIL_YELLOW, YELLOW, 
+	            DARK_RED, MAGENTA, BROWN, DARK_BLUE
+style               Tells how the geometries will be drawn. See the next table for
+                    possible values
+visibilitypreset    This refers to the name of visibility presets which
+		    tells at what zoom level the layer and its labels are visible
+draworder           An integer that determines in what order the layer will be 
+		    drawn. The layer with the lowest value will be drawn first
+routingset          An integer telling what routingset the layer belongs to
+hasroutingedges     If "no" the routing edges are not saved in routing layers.
+		    This saves space but makes routing slower. Typically this
+		    is used for streets in cities. The setting can only be no
+		    if the layers is in the last routing set.
+=================== ===========================================================
 
 The styles are different depending on what type of layers it is. Here
 is a table with possible values of the style tag:
@@ -49,4 +56,20 @@ point    SOLID_FILL, BOX_PATT, DOT_FILL, DASH_FILL, NO_FILL, SLANT_PATT,
 	 HEX_PATT, MCOMBO_AREA, MDEPTH_AREA
 ======== ===================================================================
 
-To be continued
+A layer element may contain a routing sub element where routing related attributes are set
+
+routing
+-------
+
+============= ====================================================================
+Tag           Description
+============= ====================================================================
+oneway        The traffic is directional. Valid values are "yes", "no". Default is
+              no
+roundabout    The road segment is part of a roundabout
+freeway	      If "yes" the segment is a freeway
+speedcategory Speed category where 1 is fastest. Valid values are 1-7
+============= ====================================================================
+
+
+

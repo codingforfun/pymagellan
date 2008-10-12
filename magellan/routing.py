@@ -227,9 +227,7 @@ class RoutingConfig(object):
                                                          orientations = cellelement2orientations(cellelement, \
                                                                                                  istartvertex, iendvertex, layer),
                                                          distance = distance(cellelement, istartvertex, iendvertex, layer),
-                                                         speedcat = None,
-                                                         segmentflags = None,
-                                                         bidirectional = False
+                                                         routingattributes = cellelement.routingattributes
                                                          )
             self.routingedgelayers[iroutingset].addCellElement(routingedge)
             

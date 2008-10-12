@@ -696,6 +696,7 @@ class CellElementPolyline(CellElementLineStringbase):
         self.textslot = textslot
         self.unk = unk
         self.routingvertexindices = list(routingvertexindices)
+        self.routingattributes = None
 
     def __eq__(self, x):
         return self.wkt ==  x.wkt and self.objtype == x.objtype and self.textslot == x.textslot
@@ -719,6 +720,7 @@ class CellElementPolyline(CellElementLineStringbase):
         bbox, data = self._deserialize_bbox(cell, data, bigendian)
 
         self.textslot = unpack(prefix+"B", data)[0] << 24
+
         data = data[1:]
         [self.objtype] = unpack(prefix+"B", data)
         data = data[1:]
@@ -850,14 +852,11 @@ class CellElementPolyline(CellElementLineStringbase):
                pack(prefix+"H", (polytype << 13) | nvertices)
         data = data + cdata
 
-        data += self._serialize_textslot(bigendian, last=len(self.excess)==0, onlyindex=True)
-
-
         ## Add routing data
-        if self.unk != None:
-            data += pack('B', self.unk)
-
         extradata = []
+        if self.unk != None:
+            extradata.append(self.unk)
+
         for vtxindex in self.routingvertexindices:
             byte = vtxindex // 8
             bit = vtxindex % 8
@@ -866,9 +865,70 @@ class CellElementPolyline(CellElementLineStringbase):
                 extradata += [0,0]
 
             extradata[byte] |= 1 << bit
+
+        data += self._serialize_textslot(bigendian, last=len(extradata)==0, onlyindex=True)
+
         data += pack('%dB'%len(extradata), *extradata)
                                              
         return data        
+
+
+class RoutingAttributes(object):
+    """Routing attributes that are attached to a CellElementPolyLine object and then copied
+    to the routing edges when the routing network is constructed
+
+    Attributes
+    ----------
+
+        segmentflags -- Bit mask
+         
+      ============ ===========
+      segmentflags value
+      ============ ===========
+      4         freeway
+      8         roundabout
+
+    segmenttype --
+
+      ========== ===========
+      segmettype value
+      ========== ===========
+      1          ramp
+      4          ramp
+  
+
+    bidirectional -- True if traffic can go in both directions
+    reversedir -- Traffic goes from second to first vertex
+
+    
+    """
+    bidirectional = True
+    segmentflags = None
+    segmenttype = None
+    speedcat = None
+    reversedir = False
+
+    def get_roundabout(self):
+        if self.segmentflags == None:
+            return False
+        return bool(self.segmentflags & 0x8)
+    def set_roundabout(self, value):
+        if self.segmentflags == None:
+            self.segmentflags = 0
+        if value:
+            self.segmentflags |= 0x8
+    roundabout = property(get_roundabout, set_roundabout)
+
+    def get_freeway(self):
+        if self.segmentflags == None:
+            return False
+        return bool(self.segmentflags & 0x4)
+    def set_freeway(self, value):
+        if self.segmentflags == None:
+            self.segmentflags = 0
+        if value:
+            self.segmentflags |= 0x4
+    freeway = property(get_freeway, set_freeway)
 
 class CellElementRouting(CellElementLineStringbase):
     """Routing network edge
@@ -903,25 +963,6 @@ class CellElementRouting(CellElementLineStringbase):
       135   3
       180   2
 
-    segmentflags -- Bit mask
-         
-      ========= ===========
-      roadflags value
-      ========= ===========
-      4         freeway
-      8         roundabout
-
-    segmenttype --
-
-      ========== ===========
-      segmettype value
-      ========== ===========
-      1          ramp
-      4          ramp
-  
-
-    bidirectional -- True if traffic can go in both directions
-    reversedir -- Traffic goes from second to first vertex
     nodeindices -- Tuple with edge indices for the first and second vertex
 
     """
@@ -936,22 +977,20 @@ class CellElementRouting(CellElementLineStringbase):
     
     def __init__(self, coords=None,
                  layernumref = None, cellnumref = None, numincellref = None,
-                 ivertices = (None, None),
-                 bidirectional=True, reversedir = False, edgeindices = (None, None),
-                 orientations=(0,0),
-                 segmentflags = None, speedcat = None, segmenttype = None, distance = 0):
+                 ivertices = (None, None), edgeindices = (None, None), distance = 0,
+                 orientations = None, routingattributes = None):
         CellElement.__init__(self, coords)
+
+        if routingattributes == None:
+            self.ratt = RoutingAttributes()
+        else:
+            self.ratt = routingattributes
 
         self.layernumref = layernumref
         self.cellnumref = cellnumref
         self.numincellref = numincellref
         self.ivertices = ivertices
-        self.bidirectional = bidirectional
-        self.reversedir = reversedir
         self.edgeindices = edgeindices
-        self.segmentflags = segmentflags
-        self.speedcat = speedcat
-        self.segmenttype = segmenttype
         self.distance = int(distance)
         self.restrictions = (0,0,0,0)
         self.orientations = orientations
@@ -965,16 +1004,16 @@ class CellElementRouting(CellElementLineStringbase):
 
     def __repr__(self):
         return self.__class__.__name__ + ' dist: %d, points: %d-%d, l:%s, c: %d, n: %d, bidir: %s, reverse: %s, edgeindices: %s, u1: %d, u2: %d, restrictions:%s, orientations:(%d,%d), excess: %s'%(
-            self.distance, self.ivertices[0], self.ivertices[1], self.layernumref, self.cellnumref, self.numincellref, str(self.bidirectional), 
-            str(self.reversedir), str(self.edgeindices), self.unk1, self.unk2, str(self.restrictions), self.orientations[0],
+            self.distance, self.ivertices[0], self.ivertices[1], self.layernumref, self.cellnumref, self.numincellref, str(self.ratt.bidirectional), 
+            str(self.ratt.reversedir), str(self.edgeindices), self.unk1, self.unk2, str(self.restrictions), self.orientations[0],
             self.orientations[1], dump(self.excess))
 
     @property
     def flagsh(self):
         flags = []
-        if self.bidirectional:
+        if self.ratt.bidirectional:
             flags.append('bidir')
-        if self.reversedir:
+        if self.ratt.reversedir:
             flags.append('reverse')
         return ','.join(flags)
 
@@ -1007,8 +1046,8 @@ class CellElementRouting(CellElementLineStringbase):
         data = data[4:]
 
         (tmp,) = unpack('B', data[:1])
-        self.bidirectional = bool(tmp & 0x80)
-        self.reversedir = bool(tmp & 0x40)
+        self.ratt.bidirectional = bool(tmp & 0x80)
+        self.ratt.reversedir = bool(tmp & 0x40)
         self.edgeindices = tmp & 0x7, (tmp >> 3) & 0x7
         data = data[1:]
         
@@ -1037,10 +1076,10 @@ class CellElementRouting(CellElementLineStringbase):
 
         if len(data) > 0:
             (tmp,) = unpack('B', data[-1])
-            self.segmentflags, self.speedcat = tmp >> 4, tmp & 0xf
+            self.ratt.segmentflags, self.ratt.speedcat = tmp >> 4, tmp & 0xf
         if len(data) == 2:
             (tmp,) = unpack('B', data[0])
-            self.segmenttype = tmp
+            self.ratt.segmenttype = tmp
             
     def serialize(self, cell, bigendian):
         prefix = bigendian2prefix[bigendian]
@@ -1068,16 +1107,17 @@ class CellElementRouting(CellElementLineStringbase):
 
         data += pack(prefix + 'BBBB', *self.restrictions)
 
-        tmp = int(self.bidirectional) << 7 | int(self.reversedir) << 6 | self.edgeindices[1] << 3 | self.edgeindices[0]
+        tmp = int(self.ratt.bidirectional) << 7 | int(self.ratt.reversedir) << 6 | \
+              self.edgeindices[1] << 3 | self.edgeindices[0]
         data += pack('B', tmp)
 
         data += pack('B', self.orientations[1] << 3 | self.orientations[0])
 
-        if self.segmenttype != None:
-            data += pack('B', self.segmenttype)
+        if self.ratt.segmenttype != None:
+            data += pack('B', self.ratt.segmenttype)
 
-        if self.segmentflags != None and self.speedcat != None:
-            data += pack('B', self.segmentflags << 4 | self.speedcat & 0xf)
+        if self.ratt.segmentflags != None and self.ratt.speedcat != None:
+            data += pack('B', self.ratt.segmentflags << 4 | self.ratt.speedcat & 0xf)
         
         return data        
 
