@@ -7,6 +7,7 @@ from misc import dump
 import pickle
 import shelve
 import numpy as N
+import layerpacker
 
 cellElementTypeMap = { CellElementPOI.typecode: CellElementPOI,
                        CellElementPoint.typecode: CellElementPoint,
@@ -100,7 +101,8 @@ class Cell(object):
     def _deserialize(self, data):
         cellelements = []
         ncellelements, nskip = self.layer.unpack("2H",data)
-        
+
+        print ncellelements, nskip
         if nskip != 0:
             raise Exception('Layer is probably packed, cannot read')
 

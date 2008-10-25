@@ -873,62 +873,6 @@ class CellElementPolyline(CellElementLineStringbase):
         return data        
 
 
-class RoutingAttributes(object):
-    """Routing attributes that are attached to a CellElementPolyLine object and then copied
-    to the routing edges when the routing network is constructed
-
-    Attributes
-    ----------
-
-        segmentflags -- Bit mask
-         
-      ============ ===========
-      segmentflags value
-      ============ ===========
-      4         freeway
-      8         roundabout
-
-    segmenttype --
-
-      ========== ===========
-      segmettype value
-      ========== ===========
-      1          ramp
-      4          ramp
-  
-
-    bidirectional -- True if traffic can go in both directions
-    reversedir -- Traffic goes from second to first vertex
-
-    
-    """
-    bidirectional = True
-    segmentflags = None
-    segmenttype = None
-    speedcat = None
-    reversedir = False
-
-    def get_roundabout(self):
-        if self.segmentflags == None:
-            return False
-        return bool(self.segmentflags & 0x8)
-    def set_roundabout(self, value):
-        if self.segmentflags == None:
-            self.segmentflags = 0
-        if value:
-            self.segmentflags |= 0x8
-    roundabout = property(get_roundabout, set_roundabout)
-
-    def get_freeway(self):
-        if self.segmentflags == None:
-            return False
-        return bool(self.segmentflags & 0x4)
-    def set_freeway(self, value):
-        if self.segmentflags == None:
-            self.segmentflags = 0
-        if value:
-            self.segmentflags |= 0x4
-    freeway = property(get_freeway, set_freeway)
 
 class CellElementRouting(CellElementLineStringbase):
     """Routing network edge
@@ -969,7 +913,7 @@ class CellElementRouting(CellElementLineStringbase):
 
     
     typecode=17
-    exportfields = CellElement.exportfields + ['restrictions', 'distance', 'ivertices', 'cellnumref', 
+    exportfields = CellElement.exportfields + ['restrictions', 'cost', 'ivertices', 'cellnumref', 
                                                'numincellref', 'flagsh', 'unk1', 'unk2', 'orientations', 'edgeindices',
                                                'segmenttype', 'segmentflags' ]
     FlagBidirectional = 0x80    
@@ -977,7 +921,7 @@ class CellElementRouting(CellElementLineStringbase):
     
     def __init__(self, coords=None,
                  layernumref = None, cellnumref = None, numincellref = None,
-                 ivertices = (None, None), edgeindices = (None, None), distance = 0,
+                 ivertices = (None, None), edgeindices = (None, None), cost = 0,
                  orientations = None, routingattributes = None):
         CellElement.__init__(self, coords)
 
@@ -991,7 +935,7 @@ class CellElementRouting(CellElementLineStringbase):
         self.numincellref = numincellref
         self.ivertices = ivertices
         self.edgeindices = edgeindices
-        self.distance = int(distance)
+        self.cost = int(cost)
         self.restrictions = (0,0,0,0)
         self.orientations = orientations
         self.unk1 = 0
@@ -1004,9 +948,17 @@ class CellElementRouting(CellElementLineStringbase):
 
     def __repr__(self):
         return self.__class__.__name__ + ' dist: %d, points: %d-%d, l:%s, c: %d, n: %d, bidir: %s, reverse: %s, edgeindices: %s, u1: %d, u2: %d, restrictions:%s, orientations:(%d,%d), excess: %s'%(
-            self.distance, self.ivertices[0], self.ivertices[1], self.layernumref, self.cellnumref, self.numincellref, str(self.ratt.bidirectional), 
+            self.cost, self.ivertices[0], self.ivertices[1], self.layernumref, self.cellnumref, self.numincellref, str(self.ratt.bidirectional), 
             str(self.ratt.reversedir), str(self.edgeindices), self.unk1, self.unk2, str(self.restrictions), self.orientations[0],
             self.orientations[1], dump(self.excess))
+
+    @property
+    def segmenttype(self):
+        return self.ratt.segmenttype
+
+    @property
+    def segmentflags(self):
+        return self.ratt.segmentflags
 
     @property
     def flagsh(self):
@@ -1032,7 +984,7 @@ class CellElementRouting(CellElementLineStringbase):
         data = data[8:]
         self.pointcorners = tmp1 >> 29
         self.unk1 = (tmp1 >> 24) & 0x1f
-        self.distance = tmp1 & 0xffffff
+        self.cost = tmp1 & 0xffffff
 
         self.layernumref = (tmp2 >> 28) - 8
         self.unk2 = (tmp2 >> 24) & 0xf
@@ -1075,11 +1027,12 @@ class CellElementRouting(CellElementLineStringbase):
         self.unknown2 = repr(self)
 
         if len(data) > 0:
-            (tmp,) = unpack('B', data[-1])
+            tmp = ord(data[0])
             self.ratt.segmentflags, self.ratt.speedcat = tmp >> 4, tmp & 0xf
-        if len(data) == 2:
-            (tmp,) = unpack('B', data[0])
-            self.ratt.segmenttype = tmp
+            data = data[1:]
+        
+        if len(data) > 0:
+            self.ratt.segmenttype = ord(data[0])
             
     def serialize(self, cell, bigendian):
         prefix = bigendian2prefix[bigendian]
@@ -1100,7 +1053,7 @@ class CellElementRouting(CellElementLineStringbase):
             raise Exception('Cannot determine pointcorners')
 
         data += pack(prefix + 'II',
-             ((self.unk1 & 0x1f) << 24) | (pointcorners << 29) | (self.distance & 0xffffff),
+             ((self.unk1 & 0x1f) << 24) | (pointcorners << 29) | (self.cost & 0xffffff),
              ((self.layernumref + 8) << 28) | (self.unk2 << 24) | (self.ivertices[0] << 13) | self.ivertices[1])
 
         data += pack(prefix + 'IH', self.cellnumref, self.numincellref+1)
@@ -1113,12 +1066,13 @@ class CellElementRouting(CellElementLineStringbase):
 
         data += pack('B', self.orientations[1] << 3 | self.orientations[0])
 
-        if self.ratt.segmenttype != None:
-            data += pack('B', self.ratt.segmenttype)
-
         if self.ratt.segmentflags != None and self.ratt.speedcat != None:
+
             data += pack('B', self.ratt.segmentflags << 4 | self.ratt.speedcat & 0xf)
-        
+
+            if self.ratt.segmenttype != None:
+                data += pack('B', self.ratt.segmenttype)
+
         return data        
 
 
@@ -1367,6 +1321,71 @@ def deltaint(v1,v2,maxstep):
     else:
         done = 1
     return delta, v1+delta, done
+
+class RoutingAttributes(object):
+    """Routing attributes that are attached to a CellElementPolyLine object and then copied
+    to the routing edges when the routing network is constructed
+
+    Attributes
+    ----------
+
+        segmentflags -- Bit mask
+         
+      ============ ===========
+      segmentflags value
+      ============ ===========
+      2         u-turn place
+      4         freeway
+      8         roundabout
+
+    segmenttype --
+
+      ========== ===========
+      segmettype value
+      ========== ===========
+      1          penalty if not set
+      2          ramp
+      64         crossing?, makes announcement of direction
+      
+  
+
+    bidirectional -- True if traffic can go in both directions
+    reversedir -- Traffic goes from second to first vertex
+
+    maxspeed -- Maximum speed km/h
+    
+    """
+    bidirectional = True
+    segmentflags = None
+    segmenttype = None
+    speed = None
+    speedcat = None
+    reversedir = False
+
+    def get_roundabout(self):
+        if self.segmentflags == None:
+            return False
+        return bool(self.segmentflags & 0x8)
+    def set_roundabout(self, value):
+        if self.segmentflags == None:
+            self.segmentflags = 0
+        if value:
+            self.segmentflags |= 0x8
+    roundabout = property(get_roundabout, set_roundabout)
+
+    def get_freeway(self):
+        if self.segmentflags == None:
+            return False
+        return bool(self.segmentflags & 0x4)
+    def set_freeway(self, value):
+        if self.segmentflags == None:
+            self.segmentflags = 0
+        if value:
+            self.segmentflags |= 0x4
+    freeway = property(get_freeway, set_freeway)
+
+    def __repr__(self):
+        return 'bidir=%s, freeway=%s, speedcat=%s, roundabout=%s, segmenttype=%s'%tuple(map(str, (self.bidirectional, self.freeway, self.speedcat, self.roundabout, self.segmenttype)))
 
 if __name__ == "__main__":
     import doctest

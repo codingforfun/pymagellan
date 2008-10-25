@@ -56,7 +56,8 @@ class IconTable(object):
             self.endian = '>'
         else:
             self.endian = '<'
-
+            
+        self.endian = '>'
         if bigendian != None:
             self.bigendian = bigendian
 
@@ -80,6 +81,14 @@ class IconTable(object):
         file = imagedir.open(filename)
 
         version, n = unpack(self.endian + "32sI", file.read(32+4))
+        
+        if n > 0x10000:
+            if self.endian == '<':
+                self.endian = '>'
+            else:
+                self.endian = '<'
+
+            version, n = unpack(self.endian + "32sI", file.read(32+4))
 
         offsets = {}
         self.imagedata = {}

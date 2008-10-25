@@ -4,6 +4,7 @@ from sets import Set
 import CellElement
 import Layer
 from Map import cfg_readlist, cfg_writelist
+import ConfigParser
 
 import osgeo.osr as osr
 
@@ -75,8 +76,11 @@ class RoutingConfig(object):
         self.alternatelayers = map(mapobj.getLayerByIndex, alternatelaynums)
 
         def getspeed(numden):
-            return [int(cfg.get('ROUTING', 'SPEED_LAY_%s_%d'%(numden, idx))) for idx in routinglaynums]
-        
+            try:
+                return [int(cfg.get('ROUTING', 'SPEED_LAY_%s_%d'%(numden, idx))) for idx in routinglaynums]
+            except ConfigParser.NoOptionError:
+                return []
+            
         self.speeds = dict(zip(self.routinglayers, zip(getspeed('NUM'), getspeed('DEN'))))
         
         self.nprimarylayers = int(cfg.get('ROUTING', 'PRIM_LS_QTY'))
@@ -226,7 +230,7 @@ class RoutingConfig(object):
                                                          edgeindices = (startnode_edgenum, endnode_edgenum),
                                                          orientations = cellelement2orientations(cellelement, \
                                                                                                  istartvertex, iendvertex, layer),
-                                                         distance = distance(cellelement, istartvertex, iendvertex, layer),
+                                                         cost = distance(cellelement, istartvertex, iendvertex, layer),
                                                          routingattributes = cellelement.routingattributes
                                                          )
             self.routingedgelayers[iroutingset].addCellElement(routingedge)
@@ -310,7 +314,8 @@ class RoutingConfig(object):
         s += 'Alternate layers: ' + str(self.alternatelayers) + '\n'
         s += 'Speeds (numerator, denumerator): ' + str(self.speeds) + '\n'
         return s
-    
+
+
 
 wgs84 = osr.SpatialReference()
 wgs84.ImportFromEPSG(4326)

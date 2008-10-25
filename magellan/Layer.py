@@ -18,6 +18,8 @@ from lrucache import LRUCache
 from sets import Set
 from rsttable import toRSTtable
 
+import layerpacker
+
 LayerTypePoint = 0xb
 LayerTypePolygon = 0xc
 LayerTypePolyline = 0xd
@@ -82,26 +84,27 @@ class LayerStyle(object):
             name = fields[0]
             filename = fields[1]
 
-            unk1, unk2, groupindex = map(int, fields[2:5])
-            fields = fields[5:]
+            if len(fields) > 2:
+                unk1, unk2, groupindex = map(int, fields[2:5])
+                fields = fields[5:]
 
-            self.visiblerange=[]
-            self.labelrange=[]
-            self.hidebasemaprange=[]
-            for zoomlevel in range(5):
-                self.visiblerange.append((int(fields[0]), int(fields[1])))
-                self.labelrange.append((int(fields[2]), int(fields[3])))
-                self.hidebasemaprange.append((int(fields[4]), int(fields[5])))
-                fields = fields[6:]
+                self.visiblerange=[]
+                self.labelrange=[]
+                self.hidebasemaprange=[]
+                for zoomlevel in range(5):
+                    self.visiblerange.append((int(fields[0]), int(fields[1])))
+                    self.labelrange.append((int(fields[2]), int(fields[3])))
+                    self.hidebasemaprange.append((int(fields[4]), int(fields[5])))
+                    fields = fields[6:]
 
-            self.color = fields[0]
+                self.color = fields[0]
 
-            if self.color not in self.validcolors:
-                raise ValueError('Invalid color '+self.color)
+                if self.color not in self.validcolors:
+                    raise ValueError('Invalid color '+self.color)
 
-            self._style = fields[1]
-            if self._style not in styles:
-                raise ValueError('Invalid style '+self._style)
+                self._style = fields[1]
+                if self._style not in styles:
+                    raise ValueError('Invalid style '+self._style)
 
         else:
             if style:
@@ -369,11 +372,18 @@ class Layer(object):
 
         self.draworder = 0
 
+        self.packed = False
+        self.packer = None
+
     def clearCells(self):
         self.modifiedcells = {}        # Dictionary of modified cells keyed by cellnumber
         self.cellcache = LRUCache(size=32)
         self.cellfilepos = {}
         self.cellnumbers = []
+
+    def setUnpackTable(self, filename):
+        self.packed = True
+        self.packer = layerpacker.LayerPacker(self.map.mapdir.open(filename).read())
 
     def open(self, mode):
         self.mode = mode
@@ -654,6 +664,10 @@ class Layer(object):
         if cellnum in self.cellfilepos:
             self.fhlay.seek(self.cellfilepos[cellnum][0])
             celldata = self.fhlay.read(self.cellfilepos[cellnum][1])
+
+            if self.packed:
+                celldata = self.packer.unpack(celldata)
+            
             cell.deSerialize(celldata)
         
         self.cellcache[cellnum] = cell

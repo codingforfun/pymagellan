@@ -260,7 +260,8 @@ class Map(object):
             self._cfg.readfp(IniFileFilter(self.mapdir.open(self._inifile)))
 
             # Get map type
-            self.maptype = self._cfg.get("MAP_INFO", "MAPTYPE")
+            if self._cfg.has_option('MAP_INFO', 'MAPTYPE'):
+                self.maptype = self._cfg.get("MAP_INFO", "MAPTYPE")
 
             # Get bounding box
             bbox = map(float, self._cfg.get("MAP_INFO", "BND_BOX").split(" "))
@@ -314,6 +315,25 @@ class Map(object):
             if self.maptype == MapTypeStreetRoute:
                 self.routingcfg = routing.RoutingConfig()
                 self.routingcfg.setupfromcfg(self._cfg, self)
+
+            # Read unpack tables
+            if self._cfg.has_section('PACK_LAYS'):
+                i = 0
+
+                while self._cfg.has_option('PACK_LAYS', str(i)):
+                    fields = self._cfg.get('PACK_LAYS', str(i)).split(' ')
+
+                    filename = fields[0]
+                    n = int(fields[1])
+
+                    layernumbers = map(int, fields[2:])
+
+                    assert len(layernumbers) == n
+
+                    for layernumber in layernumbers:
+                        self.getLayerByIndex(layernumber).setUnpackTable(filename)
+                    
+                    i += 1
 
     def calculatebbox(self):
         """Calculate total bounding box rectangle from layers"""
@@ -600,7 +620,10 @@ class Map(object):
 
     @property
     def mapnumstr(self):
-        return '%02d'%self._mapnumber
+        if self.gpsimage:
+            return '%02d'%self._mapnumber
+        else:
+            return ''
 
     @property
     def inifilename(self):
