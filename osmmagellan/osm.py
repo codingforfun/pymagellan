@@ -101,9 +101,11 @@ class LoadOsm(handler.ContentHandler):
           assert(layer.layertype == Layer.LayerTypePolyline)
           if len(self.waynodes) < 2:
             return
+          unk = None
+          if self.routable:
+              unk = 0
           cellelement = CellElementPolyline.fromfloat(layer,[self.nodes[ref] for ref in self.waynodes], 
-                                                      objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype),
-                                                      unk=0xa7)
+                                                      objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype), unk=unk)
           if self.routable:
               routingelements = matchingstatements.findall("routing")
 
@@ -118,6 +120,10 @@ class LoadOsm(handler.ContentHandler):
                           ra.bidirectional = value != 'on'
                       elif key == 'freeway':
                           ra.freeway = (value == 'on')
+                      elif key == 'speedcat':
+                          ra.speedcat = int(value)
+                      elif key == 'segmenttype':
+                          ra.segmenttype = int(value)
 
               if 'junction' in self.tags and self.tags['junction'] == 'roundabout':
                   ra.roundabout = True
@@ -125,6 +131,8 @@ class LoadOsm(handler.ContentHandler):
 
               if 'oneway' in self.tags and self.tags['oneway'] == 'yes':
                   ra.bidirectional = False
+
+              print ra
               
         elif statement.tag == 'polygon':
           assert(layer.layertype == Layer.LayerTypePolygon)
