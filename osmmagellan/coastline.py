@@ -1,7 +1,42 @@
 import numpy as N
 from numpy import asarray
+import shapely.wkt as wkt
 from shapely import geometry as geo
 from shapely.ops import polygonize
+from magellan.CellElement import Rec
+
+class CoastLine(object):
+    """The coastline class produces polygons from coastline segments
+
+    >>> coastline = CoastLine()
+    >>> coastline.add(((0.3,-1), (0.4,0.5)))
+    >>> coastline.add(((0.4,0.5), (0.4,2)))
+    >>> tuple(coastline.polygons(bbox = ((0,0), (1,1))))
+    ((((0.40000000000000002, 1.0), (1.0, 1.0), (1.0, 0.0), (0.3666666666666667, 0.0), (0.40000000000000002, 0.5), (0.40000000000000002, 1.0)),),)
+    
+    """
+
+    def __init__(self):
+        self.coastlinesegments = []
+
+    def add(self, segment):
+        """Add coastline segment"""
+        self.coastlinesegments.append(segment)
+
+    def polygons(self, bbox = None, assumewater = False):
+        coastline = geo.MultiLineString(self.coastlinesegments)
+
+        if bbox == None:
+            bboxpolygon = coastline.envelope
+        else:
+            bboxpolygon = wkt.loads(Rec(*bbox).wkt)
+
+        hydropolygons = coastline2polygon(bboxpolygon, coastline.geoms, assumewater = assumewater)
+
+        for p in hydropolygons:
+            exterior = tuple(p.exterior.coords)
+            interiors = tuple((tuple(interior.coords) for interior in p.interiors))
+            yield (exterior,) + interiors
 
 def isccw(coords):
     """Returns true if a closed sequence of coordinates are oriented counter-clockwise
@@ -13,6 +48,7 @@ def isccw(coords):
 
     """
 
+    print coords
     ## Calculate area of polygon as
     ## area = area + (x2 - x1) * (y2 + y1) / 2
     a = N.array(coords)

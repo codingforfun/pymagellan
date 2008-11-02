@@ -107,9 +107,9 @@ class Image(MapDirectory):
 		self.dir = tempfile.mkdtemp()
 		self.dirty = False
 		if bigendian == None:
-			if imagefilename[-3:] == "img":
+			if imagefilename[-3:].lower() == "img":
 				self.bigendian = True
-			elif imagefilename[-3:] in ("imi", "mgi"):
+			elif imagefilename[-3:].lower() in ("imi", "mgi"):
 				self.bigendian = False
 			else:
 				self.bigendian = False
@@ -164,9 +164,9 @@ class Image(MapDirectory):
 def extract_image(filename, destdir, endian='<'):
 	"""Extract Magellan image file to a directory"""
 	
-	if filename[-3:] == "img":
+	if filename[-3:].lower() == "img":
 		endian = ">"
-	elif filename[-3:] in ("imi", "mgi"):
+	elif filename[-3:].lower() in ("imi", "mgi"):
 		endian = "<"
 
 	file = open(filename)

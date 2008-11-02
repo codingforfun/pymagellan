@@ -147,6 +147,9 @@
     
     <!-- Land use -->
     <rule e="way" k="landuse" v="farm"> <polygon layer="Farm"/> </rule>
+
+    <!-- Coast line -->
+    <!-- <rule e="way" k="natural" v="coastline"> <coastline/> </rule> -->
     
     <!-- Roads and streets -->
     <rule e="way" k="highway" v="motorway|motorway_link"> <polyline layer="Freeways"/> <routing freeway="yes" oneway="yes"/> </rule>

@@ -1117,7 +1117,7 @@ class Rec(object):
     def scale(self, factor):
         return Rec(self.c1 * factor, self.c2 * factor)
     def negY(self):
-        return Rec(N.array([self.c1[0], -self.c2[1]]), N.array([self.c2[0], -self.c1[1]]))
+         return Rec(N.array([self.c1[0], -self.c2[1]]), N.array([self.c2[0], -self.c1[1]]))
 
     @property
     def center(self):
@@ -1192,6 +1192,11 @@ class Rec(object):
         return Rec(self.c1-v,self.c2+v)
     def iscoveredby(self, rec2, xmargin=1e-6, ymargin=1e-6):
         return N.alltrue(rec2.c1 <= self.c1+xmargin) and N.alltrue(rec2.c2 >= self.c2-ymargin)
+
+    @property
+    def wkt(self):
+        return 'POLYGON ((' + ', '.join([str(c[0]) + ' ' + str(c[1]) \
+                                         for c in (self.ll, self.lr, self.ur, self.ul, self.ll)]) + '))'
 
     s = property(maxY)
     n = property(minY)
