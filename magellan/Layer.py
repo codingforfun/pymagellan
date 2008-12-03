@@ -949,9 +949,7 @@ class LayerParamEstimator(object):
             """Return true if all cells are ok"""
             for cellnum, cellelementinfolist in sizeestimates.items():
                 if len(cellelementinfolist) > self.maxcellelements:
-                    if self.verbose:
-                        print 'Max cell elements exceeded for layer %s. cellnum=%d, # of cell elements=%d'% \
-                              (self.layer.name, cellnum, len(cellelementinfolist))
+                    logging.debug('Max cell elements exceeded for layer %s. cellnum=%d, # of cell elements=%d'%(self.layer.name, cellnum, len(cellelementinfolist)))
                     return False
                 cellsize = 0
                 for cellelementinfo in cellelementinfolist:
@@ -959,16 +957,14 @@ class LayerParamEstimator(object):
 
                 if cellsize > self.maxcelldatasize:
                     if self.verbose:
-                        print 'Max cell data size exceeded. cellnum=%d, datasize=%d'%(cellnum, cellsize)
+                        logging.debug('Max cell data size exceeded. cellnum=%d, datasize=%d'%(cellnum, cellsize))
                     
                     return False
             return True
                     
         for nlevels in range(self.maxnlevels):
             if checkcells(sizeestimates):
-                if self.verbose:
-                    print 'nlevels=%d for layer %s'%(nlevels, self.layer.name)
-                    
+                logging.debug('nlevels=%d for layer %s'%(nlevels, self.layer.name))
                 return nlevels
 
             for cellnum, cellelementinfolist in sizeestimates.items():
@@ -983,7 +979,8 @@ class LayerParamEstimator(object):
                         else:
                             sizeestimates[newcellnum] = [cellelementinfo]
 
-        raise Exception('Could not determine number of cell levels of layer'%self.layer.name)
+        raise Exception('Could not determine number of cell levels of layer'%self.layer.name +
+                        ', try increasing maxnlevels' )
 
 
     def calculateDBBox(self):
