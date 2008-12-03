@@ -15,6 +15,8 @@ from magellan.CellElement import CellElementPolyline, CellElementArea, \
     CellElementPoint, CellElementPOI, RoutingAttributes
 from magellan.POI import FeaturePOI
 from magellan.SearchGroup import FeatureNormal
+import bsddb
+import struct
 
 try:
     ## python 2.5
@@ -24,8 +26,31 @@ except:
     ## python 2.4
     from cElementTree import ElementTree, Element, SubElement, dump, tostring
 
+class NodeDictionary(object):
+    def __init__(self):
+        self.db = bsddb.btopen(None, 'c')
+        
+    def __getitem__(self, key):
+        return struct.unpack('dd', self.db[struct.pack('L',key)])
 
+    def __setitem__(self, key, value): 
+        self.db[struct.pack('L',key)] = struct.pack('dd', *value)
 
+class NodeDictionaryShelve(object):
+    def __init__(self):
+        self.tempfilename = '/tmp/shelve.db'
+        self.db = shelve.open(self.tempfilename)
+        
+    def __getitem__(self, key):
+        return self.db[str(key)]
+
+    def __setitem__(self, key, value): 
+        self.db[str(key)] = value
+
+    def __del__(self):
+#        if self.tempfilename:
+#            os.unlink(self.tempfilename)
+        print len(self.db)
 
 class LoadOsm(handler.ContentHandler):
   """Parse an OSM file and add features to a Map"""
@@ -35,12 +60,10 @@ class LoadOsm(handler.ContentHandler):
     """Initialise an OSM-file parser"""
 
     if inmemory:
-        self.tempfilename = None
-        self.nodes = {}        
-    if not inmemory:
-        self.tempfilename = tempfile.mktemp()
-        self.nodes = shelve.open(self.tempfilename)
-
+        self.nodes = {}
+    else:
+        self.nodes = NodeDictionary()
+        
     self.ways = []
     self.rules = rules
     self.map = mapobj
@@ -59,10 +82,6 @@ class LoadOsm(handler.ContentHandler):
     self.map.copyrightholders = \
         ('The map can be used freely under the terms of the Creative Commons '
          'Attribution-ShareAlike 2.0 license',)
-
-    def __del__(self):
-        if self.tempfilename:
-            os.unlink(self.tempfilename)
 
   def loadOsm(self, filename):
     if(not os.path.exists(filename)):
@@ -90,7 +109,7 @@ class LoadOsm(handler.ContentHandler):
       self.waynodes = []
       if name == 'node':
         """Nodes need to be stored"""
-        id = str(attrs.get('id'))
+        id = int(attrs.get('id'))
         lat = float(attrs.get('lat'))
         lon = float(attrs.get('lon'))
         self.nodes[id] = (lon,lat)
@@ -98,7 +117,7 @@ class LoadOsm(handler.ContentHandler):
 
     elif name == 'nd':
       """Nodes within a way -- add them to a list"""
-      self.waynodes.append(str(attrs.get('ref')))
+      self.waynodes.append(int(attrs.get('ref')))
     elif name == 'tag':
       """Tags - store them in a hash"""
       k,v = (attrs.get('k'), attrs.get('v'))
