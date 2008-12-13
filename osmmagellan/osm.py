@@ -4,7 +4,7 @@ to a Magellan GPS image file
 """
 import os
 import urllib
-import tempfile, shelve
+import tempfile
 import xml
 from xml.sax import make_parser, handler
 
@@ -28,29 +28,13 @@ except:
 
 class NodeDictionary(object):
     def __init__(self):
-        self.db = bsddb.btopen(None, 'c')
+        self.db = bsddb.hashopen(None, 'c')
         
     def __getitem__(self, key):
         return struct.unpack('dd', self.db[struct.pack('L',key)])
 
     def __setitem__(self, key, value): 
         self.db[struct.pack('L',key)] = struct.pack('dd', *value)
-
-class NodeDictionaryShelve(object):
-    def __init__(self):
-        self.tempfilename = '/tmp/shelve.db'
-        self.db = shelve.open(self.tempfilename)
-        
-    def __getitem__(self, key):
-        return self.db[str(key)]
-
-    def __setitem__(self, key, value): 
-        self.db[str(key)] = value
-
-    def __del__(self):
-#        if self.tempfilename:
-#            os.unlink(self.tempfilename)
-        print len(self.db)
 
 class LoadOsm(handler.ContentHandler):
   """Parse an OSM file and add features to a Map"""
@@ -198,7 +182,7 @@ class LoadOsm(handler.ContentHandler):
 
         name = self._findname(matchingstatements)        
 
-        if name != None:
+        if hasname(name):
             feature = FeatureNormal(name=cm.translate(name), layerindex=self.map.getLayerIndex(layer),
                                     objtype=objtype,
                                     cellelementreflist=cellelementrefs)
@@ -218,7 +202,7 @@ class LoadOsm(handler.ContentHandler):
 
         name = self._findname(matchingstatements)        
 
-        if name != None:
+        if hasname(name):
           attributes = []
           for a in matchingstatements.findall('attr'):
             if a.get('k') in self.tags:
@@ -271,6 +255,9 @@ def notnone(*args):
     if a != None:
       return a
   return None
+
+def hasname(name):
+    return name != None and len(name) > 0
 
 if __name__ == "__main__":
     import doctest
