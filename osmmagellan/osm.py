@@ -17,6 +17,7 @@ from magellan.POI import FeaturePOI
 from magellan.SearchGroup import FeatureNormal
 import bsddb
 import struct
+import logging
 
 try:
     ## python 2.5
@@ -101,7 +102,12 @@ class LoadOsm(handler.ContentHandler):
 
     elif name == 'nd':
       """Nodes within a way -- add them to a list"""
-      self.waynodes.append(int(attrs.get('ref')))
+      nodeid = int(attrs.get('ref'))
+      if nodeid in self.nodes:
+          self.waynodes.append(nodeid)
+      else:
+          logging.warning('Ignoring undefined node %d in way'%nodeid)
+
     elif name == 'tag':
       """Tags - store them in a hash"""
       k,v = (attrs.get('k'), attrs.get('v'))
