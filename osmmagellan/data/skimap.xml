@@ -207,11 +207,25 @@
 	<subcategory name="Other"/>
       </subcategories>
     </category>
+
     <category name="Peaks" icon="SUMMIT">
       <attributes>
         <attr name="Elevation"/>
       </attributes>
     </category>
+
+    <category name="Train Stations" icon="TRAIN_STATION"/>
+
+    <category name="Bus Stations" icon="BUS_STATION">
+      <subcategories>
+	<subcategory name="Station"/>
+	<subcategory name="Bus Stop"/>
+      </subcategories>
+    </category>
+    
+    <category name="Hospitals" icon="FIRST_AID"/>
+    <category name="Parkings" icon="LOCALE"/>
+
   </poicategories>
 
 
@@ -344,8 +358,22 @@
     </rule>
     <rule e="node" k="natural" v="peak"> 
       <poi category="Peaks"/>
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
       <attr k="ele"/>
     </rule>
+    <rule e="node" k="railway" v="station|halt|tram_stop">
+      <poi category="Train Stations"/>
+    </rule>
+    <rule e="node" k="amenity" v="bus_station">
+      <poi category="Bus Stations" subcategory="Station"/>
+    </rule>
+    <rule e="node" k="highway" v="bus_stop">
+      <poi category="Bus Stations" subcategory="Bus Stop"/>
+    </rule>
+
+    <rule e="node" k="amenity" v="hospital"> <poi category="Hospitals"/> </rule>
+    <rule e="node" k="amenity" v="parking"> <poi category="Parkings"/> </rule>
 
     <!-- Skiing -->
 
