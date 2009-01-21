@@ -166,11 +166,11 @@ class LayerStyle(object):
             raise Exception("Illegal style: %s"%self.style)
 
         if layer.layertype == LayerTypePolyline and self.style not in linestyles:
-            raise Exception('style %s is not a line style'%sself.style)
+            raise Exception('style %s is not a line style'%self.style)
         if layer.layertype == LayerTypePoint and self.style not in pointstyles:
-            raise Exception('style %s is not a point style'%sself.style)
+            raise Exception('style %s is not a point style'%self.style)
         if layer.layertype == LayerTypePolygon and self.style not in fillstyles:
-            raise Exception('style %s is not a fill style'%sself.style)
+            raise Exception('style %s is not a fill style'%self.style)
 
     style = property(getStyle, setStyle, doc='style')
 
@@ -344,6 +344,9 @@ class Layer(object):
         if filename[0:len(m.mapnumstr)] != m.mapnumstr:
             filename = m.mapnumstr + filename
 
+        if len(filename) > 8:
+            raise Exception('Length of filename %s must not exceed 8'%filename)
+
         self.name = name
         self.filename = filename
         self.cellelementid = 0
@@ -374,6 +377,12 @@ class Layer(object):
 
         self.packed = False
         self.packer = None
+
+    def __eq__(self, a):
+        return isinstance(a, Layer) and self.name == a.name
+    
+    def __hash__(self):
+        return hash(self.name)
 
     def clearCells(self):
         self.modifiedcells = {}        # Dictionary of modified cells keyed by cellnumber
@@ -407,7 +416,7 @@ class Layer(object):
                 else:
                     self.layerfilename = self.filename+".yal"
                     self.indexfilename = self.filename+".tlc"
-                self.fhlay = self.map.mapdir.open(self.layerfilename, "w")
+                self.fhlay = self.map.mapdir.open(self.layerfilename, "wb")
 
                 if not self.map.inmemory:
                     self.shelffile = tempfile.mktemp()
@@ -502,15 +511,16 @@ class Layer(object):
 
             tmplay.flush()
 
-            shutil.copy(tmplay.name, self.fhlay.name)
+            tmplay.seek(0) # This is needed in Windows as reported by ludwigmb
+            shutil.copyfileobj(tmplay, self.fhlay)
 
             self.fhlay.close()
 
             # Create index file
-            fhidx = self.map.mapdir.open(self.indexfilename,"w")
+            fhidx = self.map.mapdir.open(self.indexfilename,"wb")
             fhdrc = None
             if self.writedrc:
-                fhdrc = self.map.mapdir.open(self.filename+".drc", "w")
+                fhdrc = self.map.mapdir.open(self.filename+".drc", "wb")
 
             if fhdrc:
                 fhdrc.write( self.pack("I", len(self.cellnumbers)))

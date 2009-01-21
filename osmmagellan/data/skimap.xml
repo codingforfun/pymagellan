@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<osmmag>
+  <name>OSMImport</name>
+  <!-- Groups -->
+  <groups>
+    <!-- Roads -->
+    <group name="Roads" searchgroup="true">
+      <layers>
+	<layer name="Freeways" filename="fwy" color="BLACK" style="US_INTERSTATE_HW_LINE" type="polyline" draworder="10"
+	       routingset="0">
+	</layer>
+	<layer name="Major_Highways" filename="mj_hwy" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="20" routingset="0">
+	  <routing freeway="no" oneway="no"/>
+	</layer>
+	<layer name="Minor_Highways" filename="mn_hwy" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="20" routingset="1" />
+	<layer name="Major_Roads" filename="maj" color="BLACK" style="US_STATE_HW_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="30" routingset="1" />
+	<layer name="Streets" filename="str" color="BLACK" style="US_STREET_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="40" routingset="2" />
+	<layer name="Trails_4WD" filename="trail4" color="BLACK" style="TRAIL_LINE" type="polyline" 
+	       visibilitypreset="freeway" draworder="50"/>
+      </layers>
+    </group>
+
+    <!-- Skiing slopes and lifts -->
+    <group name="Skiing" searchgroup="true">
+      <layers>
+        <!-- Lifts -->
+        <layer name="aerialway" filename="aerial" color="BLACK" style="MDASH_LINE" type="polyline" 
+               visibilitypreset="skiing" draworder="5"/>
+        <layer name="drag_lift" filename="drag" color="BLUE" style="MDASH_LINE" type="polyline" 
+               visibilitypreset="skiing" draworder="5"/>
+        <layer name="cablecar" filename="cable" color="BLACK" style="MDASH_LINE" type="polyline" 
+               visibilitypreset="skiing" draworder="5"/>
+        <layer name="station" filename="stat" color="BLACK" style='SMALL_CITIES' type="point"  
+               visibilitypreset="skiing" draworder="50"/> 
+        
+        <!-- Pistes -->
+        <layer name="downhill" filename="dh" color="BLACK" style="TRAIL_LINE" type="polyline"
+               visibilitypreset="skiing" draworder="50"/>
+        <layer name="downhill_novice" filename="dhno" color="GREEN" style="THICK_LINE" type="polyline"
+               visibilitypreset="skiing" draworder="50"/>
+        <layer name="downhill_easy" filename="dhea" color="BLUE" style="THICK_LINE" type="polyline"
+               visibilitypreset="skiing" draworder="50"/>
+        <layer name="downhill_intermediate" filename="dhin" color="RED" style="THICK_LINE" type="polyline"
+               visibilitypreset="skiing" draworder="50"/>
+        <layer name="downhill_advanced" filename="dhad" color="BLACK" style="THICK_LINE" type="polyline"
+               visibilitypreset="skiing" draworder="50"/>
+        <layer name="downhill_expert" filename="dhex" color="BLACK" style="THICK_LINE" type="polyline"
+               visibilitypreset="skiing" draworder="50"/>
+        <layer name="downhill_freeride" filename="dhfr" color="YELLOW" style="THICK_LINE" type="polyline"
+               visibilitypreset="skiing" draworder="50"/>
+      </layers>
+    </group>
+
+    <!-- Paths -->
+    <group name="Paths">
+      <layers>
+	<layer name="Trails" filename="trail" color="BLACK" style="TRAIL_LINE" type="polyline" />
+      </layers>
+    </group>
+
+
+    <!-- Parks -->
+    <group name="Parks" searchgroup="true">
+      <layers>
+	<layer name="Parks" filename="park" color="LIGHT_GRAY" style="BOX_PATT" type="polygon" draworder="100" />
+      </layers>
+    </group>
+
+    <!-- Buildings -->
+    <group name="Buildings" searchgroup="false">
+      <layers>
+	<layer name="Buildings" filename="build" color="ORANGE" style="SOLID_FILL" type="polygon"  draworder="90" />
+      </layers>
+    </group>
+
+    <!-- Land use -->
+    <group name="Land_Use" searchgroup="false">
+      <layers>
+	<layer name="Farm" filename="farm" color="YELLOW" style="SOLID_FILL" type="polygon" draworder="90" />
+      </layers>
+    </group>    
+    
+    <!-- Hydrography -->
+    <group name="Hydrography" searchgroup="true">
+      <layers>
+	<layer name="Hydro_Polygons" filename="hydp" color="DARK_GRAY" style="SOLID_FILL" type="polygon" draworder="99" />
+	<layer name="Hydro_Lines" filename="hydl" color="DARK_GRAY" style="SINGLE_LINE" type="polyline" draworder="99" />
+      </layers>
+    </group>
+
+    <!-- Points -->
+    <group name="Points" searchgroup="true">
+      <layers>
+	<layer name="Points" filename="points" color="LIGHT_GRAY" style='LIGHT_HOUSE' type="point" />
+      </layers>
+    </group>
+    
+
+
+    <!-- Railroads -->
+    <group name="Railroads" searchgroup="false">
+      <layers>
+	<layer name="Railroads" filename="railrd" color="DARK_GRAY" style="US_RAIL_ROAD" type="polyline" />
+      </layers>
+    </group>
+  </groups>
+
+  <!-- Layer visibility presets -->
+  <visibilitypresets>
+    <visibilitypreset name="freeway">
+      <layervisibility>
+	<range from="0" to="10"/>  <!-- Lowest -->
+	<range from="0" to="10"/>  <!-- Low -->
+	<range from="0" to="10"/>  <!-- Medium -->
+	<range from="0" to="10"/>  <!-- High -->
+	<range from="0" to="10"/>  <!-- Highest -->
+      </layervisibility>
+      <labelvisibility>
+	<range from="0" to="10"/>  <!-- Lowest -->
+	<range from="0" to="10"/>  <!-- Low -->
+	<range from="0" to="10"/>  <!-- Medium -->
+	<range from="0" to="10"/>  <!-- High -->
+	<range from="0" to="10"/>  <!-- Highest -->
+      </labelvisibility>
+      <basemapvisibility>
+	<range from="0" to="10"/>  <!-- Lowest -->
+	<range from="0" to="10"/>  <!-- Low -->
+	<range from="0" to="10"/>  <!-- Medium -->
+	<range from="0" to="10"/>  <!-- High -->
+	<range from="0" to="10"/>  <!-- Highest -->
+      </basemapvisibility>
+    </visibilitypreset>
+    <visibilitypreset name="skiing">
+      <layervisibility>
+	<range from="0" to="6"/>  <!-- Lowest -->
+	<range from="0" to="6"/>  <!-- Low -->
+	<range from="0" to="6"/>  <!-- Medium -->
+	<range from="0" to="6"/>  <!-- High -->
+	<range from="0" to="6"/>  <!-- Highest -->
+      </layervisibility>
+      <labelvisibility>
+	<range from="0" to="6"/>  <!-- Lowest -->
+	<range from="0" to="6"/>  <!-- Low -->
+	<range from="0" to="6"/>  <!-- Medium -->
+	<range from="0" to="6"/>  <!-- High -->
+	<range from="0" to="6"/>  <!-- Highest -->
+      </labelvisibility>
+      <basemapvisibility>
+	<range from="0" to="6"/>  <!-- Lowest -->
+	<range from="0" to="6"/>  <!-- Low -->
+	<range from="0" to="6"/>  <!-- Medium -->
+	<range from="0" to="6"/>  <!-- High -->
+	<range from="0" to="6"/>  <!-- Highest -->
+      </basemapvisibility>
+    </visibilitypreset>
+  </visibilitypresets>
+
+
+  <!-- POI categories- --> 
+  <poicategories> 
+    <attributes>
+      <attr name="Phone number"/>
+      <attr name="Address"/>
+    </attributes>
+    <category name="Gas stations" icon="FUEL"/> 
+    <category name="Restaurants" icon="RESTUARANTS">
+      <subcategories>
+	<subcategory name="Thai"/>
+	<subcategory name="Fast food"/>
+	<subcategory name="Other"/>
+      </subcategories>
+    </category>
+    <category name="Cafe" icon="RESTUARANTS">
+      <subcategories>
+	<subcategory name="Other"/>
+      </subcategories>
+    </category>
+    <category name="Shopping" icon="SHOPPING_CENTER">
+      <subcategories>
+	<subcategory name="Supermarket"/>
+	<subcategory name="Sports"/>
+	<subcategory name="Outdoor"/>
+	<subcategory name="Hardware"/>
+	<subcategory name="Shoes"/>
+	<subcategory name="Car"/>
+	<subcategory name="Bicycle"/>
+	<subcategory name="Bakery"/>
+	<subcategory name="Other"/>
+      </subcategories>
+    </category>
+    <category name="Education" icon="HOUSE">
+      <subcategories>
+	<subcategory name="Schools"/>
+      </subcategories>
+    </category>
+    <category name="Tourism" icon="TOURIST">
+      <subcategories>
+	<subcategory name="Hostel"/>
+	<subcategory name="Hotel"/>
+	<subcategory name="Museum"/>
+	<subcategory name="Information"/>
+	<subcategory name="Other"/>
+      </subcategories>
+    </category>
+    <category name="Peaks" icon="SUMMIT">
+      <attributes>
+        <attr name="Elevation"/>
+      </attributes>
+    </category>
+  </poicategories>
+
+
+
+  <!-- OSM translation rules -->
+  <rules>
+    
+    <!-- Parks -->
+    <rule e="way" k="leisure" v="park"> <polygon layer="Parks"/> </rule>
+    
+    <!-- Water -->
+    <rule e="way" k="natural" v="water"> <polygon layer="Hydro_Polygons"/> </rule>
+    <rule e="way" k="waterway" v="*"> <polyline layer="Hydro_Lines"/> </rule>
+    
+    <!-- Land use -->
+    <rule e="way" k="landuse" v="farm"> <polygon layer="Farm"/> </rule>
+
+    <!-- Coast line -->
+    <!-- <rule e="way" k="natural" v="coastline"> <coastline/> </rule> -->
+    
+    <!-- Roads and streets -->
+    <rule e="way" k="highway" v="motorway|motorway_link"> <polyline layer="Freeways"/> <routing freeway="yes" oneway="yes"/> </rule>
+    <rule e="way" k="highway" v="trunk|trunk_link"> <polyline layer="Major_Highways"/> </rule> 
+    <rule e="way" k="highway" v="primary"> <polyline layer="Minor_Highways"/> </rule> 
+    <rule e="way" k="highway" v="primary_link"> <polyline layer="Minor_Highways"/> </rule> 
+    <rule e="way" k="highway" v="secondary"> <polyline layer="Major_Roads"/> </rule> 
+    <rule e="way" k="highway" v="tertiary"> <polyline layer="Streets"/> </rule> 
+    <rule e="way" k="highway" v="residential|living_street|unclassified|minor"> <polyline layer="Streets"/> </rule>
+    <rule e="way" k="highway" v="track|unsurfaced"> <polyline layer="Trails_4WD"/> </rule> 
+    <rule e="way" k="highway" v="service"> <polyline layer="Streets"/> </rule> 
+
+    <!-- Paths -->
+    <rule e="way" k="highway" v="footway|steps"> <polyline layer="Trails"/> </rule> 
+
+    <!-- Cycle ways-->
+    <rule e="way" k="cycleway" v="track"> <polyline layer="Trails"/></rule> 
+
+    <!-- Railways -->
+    <rule e="way" k="railway" v="rail|light_rail|subway|tram"> <polyline layer="Railroads"/> </rule>
+
+    <!-- Points -->
+    <rule e="node" k="amenity" v="kindergarten">
+      <point layer="Points"/>
+    </rule>
+
+    <!-- POI -->
+    <rule e="node" k="amenity" v="fuel"> <poi category="Gas stations"/> </rule>
+    <rule e="node" k="shop" v="supermarket"> 
+      <poi category="Shopping" subcategory="Supermarket"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="shop" v="books"> 
+      <poi category="Shopping" subcategory="Books"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="shop" v="computer"> 
+      <poi category="Shopping" subcategory="Computer"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="shop" v="hardware"> 
+      <poi category="Shopping" subcategory="Hardware"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="shop" v="sports"> 
+      <poi category="Shopping" subcategory="Sports"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="shop" v="outdoor"> 
+      <poi category="Shopping" subcategory="Outdoor"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="shop" v="bakery"> 
+      <poi category="Shopping" subcategory="Bakery"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="shop" v="*"> 
+      <poi category="Shopping" subcategory="Other"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="amenity" v="fast_food">
+      <poi category="Restaurants" subcategory="Fast food"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="amenity" v="restaurant">
+      <rule e="node" k="cuisine" v="thai">
+            <poi category="Restaurants" subcategory="Thai"/> 
+            <attr k="contact:phone"/>
+            <attr k="contact:address"/>
+      </rule>
+      <rule e="node" k="cuisine" v="chinese">
+            <poi category="Restaurants" subcategory="Chinese"/> 
+            <attr k="contact:phone"/>
+            <attr k="contact:address"/>
+      </rule>
+      <else>
+            <poi category="Restaurants" subcategory="Other"/> 
+            <attr k="contact:phone"/>
+            <attr k="contact:address"/>
+      </else>
+    </rule>
+    <rule e="node" k="amenity" v="cafe">
+      <poi category="Cafe" subcategory="Other"/> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+    </rule>
+    <rule e="node" k="amenity" v="school"> 
+      <poi category="Education" subcategory="Schools"/>
+    </rule>
+
+    <rule e="node" k="tourism" v="information"> 
+      <poi category="Tourism" subcategory="Information"/>
+    </rule>
+    <rule e="node" k="tourism" v="hotel"> 
+      <poi category="Tourism" subcategory="Hotel"/>
+    </rule>
+    <rule e="node" k="tourism" v="hostel"> 
+      <poi category="Tourism" subcategory="Hostel"/>
+    </rule>
+    <rule e="node" k="tourism" v="*"> 
+      <poi category="Tourism" subcategory="Other"/>
+    </rule>
+    <rule e="node" k="natural" v="peak"> 
+      <poi category="Peaks"/>
+      <attr k="ele"/>
+    </rule>
+
+    <!-- Skiing -->
+
+    <!-- Slopes -->
+    <rule e="way" k="piste:type" v="downhill">
+      <rule e="way" k="piste:difficulty" v="novice"> <polyline layer="downhill_novice"/> </rule>
+      <rule e="way" k="piste:difficulty" v="easy"> <polyline layer="downhill_novice"/> </rule>
+      <rule e="way" k="piste:difficulty" v="intermediate"> <polyline layer="downhill_intermediate"/> </rule>
+      <rule e="way" k="piste:difficulty" v="advanced"> <polyline layer="downhill_advanced"/> </rule>
+      <rule e="way" k="piste:difficulty" v="expert"> <polyline layer="downhill_expert"/> </rule>
+      <rule e="way" k="piste:difficulty" v="freeride"> <polyline layer="downhill_freeride"/> </rule>
+      <else> <polyline layer="downhill"/> </else>
+    </rule>
+
+    <!-- Lifts -->
+    <rule e="way" k="aerialway" v="cable_car"> <polyline layer="cablecar"/> </rule>
+    <rule e="way" k="aerialway" v="drag_lift"> <polyline layer="drag_lift"/> </rule>
+    <rule e="way" k="aerialway" v="*"> <polyline layer="aerialway"/> </rule>
+    
+    <!-- Lift station -->
+    <rule e="node" k="aerialway" v="station"> <point layer="station"/> </rule>
+
+  </rules>
+  
+</osmmag>

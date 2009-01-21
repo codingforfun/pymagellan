@@ -107,10 +107,14 @@ def convert2blx(src, dest, bbox, bigendian=False, zscale=1):
     tmp = tempdriver.Create('', srcwin.width, srcwin.height, eType=gdal.GDT_Int16)
     tmpband = tmp.GetRasterBand(1)
 
-    tmpband.SetNoDataValue(srcband.GetNoDataValue())
+    if srcband.GetNoDataValue():
+        tmpband.SetNoDataValue(srcband.GetNoDataValue())
 
     ## Create destination dataset
     blxdriver = gdal.GetDriverByName('blx')
+
+    if blxdriver == None:
+        raise Exception('GDAL library does not have BLX support')
 
     ## Read raster from read window
     data = srcdataset.ReadRaster(srcwin.west, srcwin.north, srcwin.width, srcwin.height, srcwin.width, srcwin.height)

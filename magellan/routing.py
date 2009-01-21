@@ -38,7 +38,7 @@ class RoutingConfig(object):
               Example: (5, 2) means 5/2
     
     nprimarylayers -- Unknown (the first n layers are primary which could mean that there are
-                      routingedges for all objects in the layers)
+                      routing edges for all objects in the layers)
     
 
     """
@@ -157,7 +157,7 @@ class RoutingConfig(object):
             cfg.set('ROUTING', 'PRIM_LS_QTY', str(self.nprimarylayers))
 
     def updateRoutingSets(self):
-        """This will check for routing set inconsistencies and fix them"""
+        """Checks for routing set inconsistencies and fix them"""
         for layer in self.routinglayers:
             for rset in self.routingsets[self.minset(layer):]:
                 if layer not in rset:
