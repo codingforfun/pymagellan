@@ -15,7 +15,6 @@ from magellan.CellElement import CellElementPolyline, CellElementArea, \
     CellElementPoint, CellElementPOI, RoutingAttributes
 from magellan.POI import FeaturePOI
 from magellan.SearchGroup import FeatureNormal
-import bsddb
 import struct
 import logging
 
@@ -27,16 +26,6 @@ except:
     ## python 2.4
     from cElementTree import ElementTree, Element, SubElement, dump, tostring
 
-class NodeDictionary(object):
-    def __init__(self):
-        self.db = bsddb.hashopen(None, 'c')
-        
-    def __getitem__(self, key):
-        return struct.unpack('dd', self.db[struct.pack('L',key)])
-
-    def __setitem__(self, key, value): 
-        self.db[struct.pack('L',key)] = struct.pack('dd', *value)
-
 class LoadOsm(handler.ContentHandler):
   """Parse an OSM file and add features to a Map"""
 
@@ -47,6 +36,17 @@ class LoadOsm(handler.ContentHandler):
     if inmemory:
         self.nodes = {}
     else:
+        import bsddb
+        class NodeDictionary(object):
+            def __init__(self):
+                self.db = bsddb.hashopen(None, 'c')
+
+            def __getitem__(self, key):
+                return struct.unpack('dd', self.db[struct.pack('L',key)])
+
+            def __setitem__(self, key, value): 
+                self.db[struct.pack('L',key)] = struct.pack('dd', *value)
+
         self.nodes = NodeDictionary()
         
     self.ways = []
