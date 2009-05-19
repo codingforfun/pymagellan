@@ -2,6 +2,13 @@
  Utilities for manipulating Geometry WKT.
 """
 
+def close_polygon(coords):
+    coords = list(coords)
+    if coords[0] != coords[-1]:
+        return coords + coords[0:1]
+    else:
+        return coords
+
 def precision_wkt(geom, prec):
     """
     Returns WKT text of the geometry according to the given precision (an 
@@ -31,7 +38,7 @@ def precision_wkt(geom, prec):
         return ','.join([coord_fmt % c[:2] for c in coords])
 
     def formatted_poly(poly):
-        return ','.join(['(%s)' % formatted_coords(r) for r in poly])
+        return ','.join(['(%s)' % formatted_coords(close_polygon(r)) for r in poly])
 
     def formatted_geom(g):
         gtype = str(g.geometrytype).upper()
