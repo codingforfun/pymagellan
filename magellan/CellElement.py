@@ -10,6 +10,10 @@ def unpack(types, data):
 
 bigendian2prefix = {True: '>', False: '<'}
 
+## Exceptions
+class GeometryError(Exception):
+    pass
+
 # Class CellElement
 #
 # Description:
@@ -436,13 +440,14 @@ class CellElementArea(CellElement):
             ## Stored as unclosed polygon
             newcoords = []
             for p in coords:
-                if p[0] == p[-1]:
+                if N.alltrue(p[0] == p[-1]):
                     newcoords.append(p[0:-1])
+                    if len(p) < 4:
+                        raise GeometryError('Number of points must be > 2')
                 else:
                     newcoords.append(p)
-
-                if len(p) <= 2:
-                    raise ValueError('Area must at least contain 3 vertices')
+                    if len(p) < 3:
+                        raise GeometryError('Number of points must be > 2')
             try:
                 self._coords = tuple([tuple([tuple(c) for c in p]) for p in newcoords])
             except:
@@ -470,7 +475,7 @@ class CellElementArea(CellElement):
 
         >>> area = CellElementArea([[[0,1],[3,4],[4,5]], [[-1,0],[1,0],[1,1]]])
         >>> area.bounds
-        (-1.0, 0.0, 4.0, 5.0)
+        (-1, 0, 4, 5)
         """
         minimum = [N.array(p).min(0) for p in self._coords]
         maximum = [N.array(p).max(0) for p in self._coords]
