@@ -12,7 +12,7 @@ import char
 import coastline
 import magellan.Layer as Layer
 from magellan.CellElement import CellElementPolyline, CellElementArea, \
-    CellElementPoint, CellElementPOI, RoutingAttributes
+    CellElementPoint, CellElementPOI, RoutingAttributes, GeometryError
 from magellan.POI import FeaturePOI
 from magellan.SearchGroup import FeatureNormal
 import struct
@@ -116,7 +116,7 @@ class LoadOsm(handler.ContentHandler):
   
   def endElement(self, name):
     """Handle ways in the OSM data"""
-
+    
     if name not in ('node','way','relation'):
       return
 
@@ -173,12 +173,14 @@ class LoadOsm(handler.ContentHandler):
                   ra.bidirectional = False
               
         elif statement.tag == 'polygon':
-          assert(layer.layertype == Layer.LayerTypePolygon)
-          try:
-            cellelement = CellElementArea.fromfloat(layer, ([self.nodes[ref] for ref in self.waynodes],), 
-                                          objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype))
-          except ValueError:
-            return
+            try:
+                coords = [self.nodes[ref] for ref in self.waynodes]
+                objtype = group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype)
+                cellelement = CellElementArea.fromfloat(layer, (coords,), 
+                                                        objtype=objtype)
+            except GeometryError:
+                logging.warning('Improper polygon found: ' + str(coords))
+                continue
 
         elif statement.tag == 'point':
           assert(layer.layertype == Layer.LayerTypePoint)
