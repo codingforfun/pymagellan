@@ -634,7 +634,7 @@ class CellElementArea(CellElement):
 
     def encode_polygon(self, bbox, vlist, bigendian):
         prefix = bigendian2prefix[bigendian]
-
+        vlist = rotate_sequence(vlist, bbox)
         nvertices = len(vlist)
         cdata = ""
         if N.alltrue(vlist[0] == bbox.c2) and \
@@ -645,8 +645,10 @@ class CellElementArea(CellElement):
              N.alltrue(vlist[-1] == N.array([bbox.c1[0],bbox.c2[1]])):
             vlist.pop(-1)
             polytype = 7
-        elif N.alltrue(vlist[0] == bbox.c2):
-            polytype = 3
+        ## FIXME, polygon type 3 has caused mapsend lite to crash
+        ##        disabling it for now
+        #        elif N.alltrue(vlist[0] == bbox.c2):
+        #            polytype = 3
         elif N.alltrue(vlist[0] == bbox.c1):
             polytype = 6
         else:
@@ -1331,6 +1333,19 @@ def deltaint(v1,v2,maxstep):
     else:
         done = 1
     return delta, v1+delta, done
+
+def rotate_sequence(seq, bbox):
+    """Rotate sequence so that first vertex coincide with bbox corners"""
+    newseq = [e.tolist() for e in seq]
+    try:
+        firstindex = newseq.index(bbox.c1.tolist())
+    except ValueError:
+        try:
+            firstindex = newseq.index(bbox.c2.tolist())
+        except ValueError:
+            return seq
+
+    return seq[firstindex:] + seq[:firstindex]
 
 class RoutingAttributes(object):
     """Routing attributes that are attached to a CellElementPolyLine object and then copied
