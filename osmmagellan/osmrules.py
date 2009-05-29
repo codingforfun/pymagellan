@@ -31,6 +31,7 @@ class OSMMagRules(object):
     """
     
     def __init__(self, filename):
+      self.filename = filename
       self.etree = ElementTree(file=filename)
       self.root = self.etree.getroot()
 

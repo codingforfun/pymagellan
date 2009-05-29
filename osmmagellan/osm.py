@@ -26,67 +26,180 @@ except:
     ## python 2.4
     from cElementTree import ElementTree, Element, SubElement, dump, tostring
 
-class LoadOsm(handler.ContentHandler):
-  """Parse an OSM file and add features to a Map"""
+class MapBuilder(object):
+    def __init__(self, rules, mapobj, nametags = None, 
+                 routable = False):
+        self.rules = rules
+        self.map = mapobj
+        self.routable = routable
+        self.nametags = nametags
+        self.charmap = char.UnicodeTranslator()
+        self.coastline = coastline.CoastLine()
 
+        ## Set copyright field
+        self.map.copyrightholders = \
+            ('The map can be used freely under the terms of the Creative Commons '
+             'Attribution-ShareAlike 2.0 license',)
+        
+    def load(self):
+        raise Exception('Not implemented')
+
+    def add_element(self, statement, tags, coords):
+      cm = self.charmap
+      if statement.tag in ('polygon', 'polyline', 'point'):
+        layer, group = self.map.getLayerAndGroupByName(\
+            self.map.mapnumstr + '_' + statement.get('layer') )
+
+        objtype = statement.get('objtype') or 1
+
+        if statement.tag == 'polyline':
+          assert(layer.layertype == Layer.LayerTypePolyline)
+          if len(coords) < 2:
+            return
+
+          unk = None
+          if self.routable:
+              unk = 0
+          cellelement = CellElementPolyline.fromfloat(layer, coords, \
+                objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype), unk=None)
+
+          if self.routable:
+              routingelements = statement.findall("routing")
+
+              ra = RoutingAttributes()
+              ra.segmentflags = 0
+              ra.speedcat = 0
+              cellelement.routingattributes = ra
+
+              for routing in statement.findall("routing"):
+                  for key, value in routing.items():
+                      if key == 'oneway':
+                          ra.bidirectional = value != 'on'
+                      elif key == 'freeway':
+                          ra.freeway = (value == 'on')
+                      elif key == 'speedcat':
+                          ra.speedcat = int(value)
+                      elif key == 'segmenttype':
+                          ra.segmenttype = int(value)
+
+              if 'junction' in tags and self.tags['junction'] == 'roundabout':
+                  ra.roundabout = True
+                  ra.bidirectional = False
+
+              if 'oneway' in tags and tags['oneway'] == 'yes':
+                  ra.bidirectional = False
+
+        elif statement.tag == 'polygon':
+            try:
+                objtype = group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype)
+                cellelement = CellElementArea.fromfloat(layer, (coords,), 
+                                                        objtype=objtype)
+            except GeometryError:
+                logging.warning('Improper polygon found: ' + str(coords))
+                return
+
+        elif statement.tag == 'point':
+          assert(layer.layertype == Layer.LayerTypePoint)
+          cellelement = CellElementPoint.fromfloat(layer, coords[0],
+                         objtype = group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype))
+        cellelementrefs = layer.addCellElement(cellelement)
+
+        name = self._findname(statement, tags)
+
+        if hasname(name):
+            feature = FeatureNormal(name=cm.translate(name), 
+                                    layerindex=self.map.getLayerIndex(layer),
+                                    objtype=objtype,
+                                    cellelementreflist=cellelementrefs)
+            group.addFeature(feature)
+
+      elif statement.tag == 'poi':
+        poigroup = self.map.getPOIGroup()
+        poilayer = self.map.getPOILayers()[0]
+
+        category = statement.get('category')
+        subcategory = statement.get('subcategory') or 'NOSUB1000'
+
+        cat = poigroup.catman.getCategoryByName(category)
+        subcat = cat.getSubCategoryByName(subcategory)
+
+        poice = CellElementPOI.fromfloat(poilayer, coords[0], categoryid=cat.id, subcategoryid=subcat.id)
+
+        name = self._findname(statement, tags)
+
+        if hasname(name):
+          attributes = []
+          for a in statement.findall('attr'):
+            if a.get('k') in tags:
+              attributes.append(cm.translate(tags[a.get('k')]))
+            elif a.text:
+              attributes.append(cm.translate(a.text.encode))
+            else:
+              attributes.append('')
+
+          feature = FeaturePOI(poilayer.addCellElement(poice), [cm.translate(name)] + attributes, cat.id, subcat.id)
+          poigroup.addFeature(feature)
+      elif statement.tag == 'coastline':
+          self.coastline.add(coords)
+
+    def _findname(self, statement, tags):
+        if self.nametags != None:
+            for nametag in self.nametags:
+                if nametag in tags:
+                    return tags[nametag]
+        else:       
+            nameelements = statement.findall('name')
+
+            for nameelem in nameelements:
+                if nameelem.get('k') in tags.keys():
+                    return tags[nameelem.get('k')]
+                elif nameelem.text != None:
+                    return nameelem.text
+
+    def addCoastLinePolygon(self, bbox = None):
+        pass
+        #       for polygon in self.coastline.polygons(bbox):
+        #           print polygon
+
+class LoadOsm(handler.ContentHandler, MapBuilder):
+  """Parse an OSM file and add features to a Map"""
   def __init__(self, filename, rules, mapobj, nametags = None, 
                routable = False, inmemory = True):
-    """Initialise an OSM-file parser"""
+      MapBuilder.__init__(self, rules, mapobj, nametags, routable)
 
-    if inmemory:
-        self.nodes = {}
-    else:
-        import bsddb
-        class NodeDictionary(object):
-            def __init__(self):
-                self.db = bsddb.hashopen(None, 'c')
+      if inmemory:
+          self.nodes = {}
+      else:
+          import bsddb
+          class NodeDictionary(object):
+              def __init__(self):
+                  self.db = bsddb.hashopen(None, 'c')
+                  
+              def __getitem__(self, key):
+                  return struct.unpack('dd', self.db[struct.pack('L',key)])
 
-            def __getitem__(self, key):
-                return struct.unpack('dd', self.db[struct.pack('L',key)])
+              def __setitem__(self, key, value): 
+                  self.db[struct.pack('L',key)] = struct.pack('dd', *value)
 
-            def __setitem__(self, key, value): 
-                self.db[struct.pack('L',key)] = struct.pack('dd', *value)
+          self.nodes = NodeDictionary()
 
-        self.nodes = NodeDictionary()
-        
-    self.ways = []
-    self.rules = rules
-    self.map = mapobj
-    self.poicount = 0
-    self.nametags = nametags
-    self.stop = False
-    self.routable = routable
-      
-    self.charmap = char.UnicodeTranslator()
+      self.ways = []
+      self.poicount = 0
+      self.stop = False
+      self.filename = filename
 
-    self.coastline = coastline.CoastLine()
-
-    self.loadOsm(filename)
-
-    ## Set copyright field
-    self.map.copyrightholders = \
-        ('The map can be used freely under the terms of the Creative Commons '
-         'Attribution-ShareAlike 2.0 license',)
-
-  def loadOsm(self, filename):
-    if(not os.path.exists(filename)):
-      raise ValueError("No such data file %s" % filename)
+  def load(self):
+    if(not os.path.exists(self.filename)):
+      raise ValueError("No such data file %s" % self.filename)
     try:
       parser = make_parser()
       parser.setContentHandler(self)
 
       self.coastline = coastline.CoastLine()
-
-      parser.parse(filename)
+      parser.parse(self.filename)
     except xml.sax._exceptions.SAXParseException:
-      print "Error loading %s" % filename
+      print "Error loading %s" % self.filename
 
-
-  def addCoastLinePolygon(self, bbox = None):
-      pass
-#       for polygon in self.coastline.polygons(bbox):
-#           print polygon
-    
   def startElement(self, name, attrs):
     """Handle XML elements"""
     if name in('node','way','relation'):
@@ -125,122 +238,13 @@ class LoadOsm(handler.ContentHandler):
     if matchingstatements == None:
       return
 
-    cm = self.charmap
+    if name == 'way':
+        coords = [self.nodes[ref] for ref in self.waynodes]
+    elif name == 'node':
+        coords = [self.lastnodecoord]
 
     for statement in matchingstatements:
-      if statement.tag in ('polygon', 'polyline', 'point'):
-        layer, group = self.map.getLayerAndGroupByName(\
-            self.map.mapnumstr + '_' + statement.get('layer') )
-
-        objtype = statement.get('objtype') or 1
-
-        if statement.tag == 'polyline':
-          assert(layer.layertype == Layer.LayerTypePolyline)
-          if len(self.waynodes) < 2:
-            return
-
-          unk = None
-          if self.routable:
-              unk = 0
-          coords = [self.nodes[ref] for ref in self.waynodes]
-          cellelement = CellElementPolyline.fromfloat(layer, coords, \
-                objtype=group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype), unk=None)
-
-          if self.routable:
-              routingelements = matchingstatements.findall("routing")
-
-              ra = RoutingAttributes()
-              ra.segmentflags = 0
-              ra.speedcat = 0
-              cellelement.routingattributes = ra
-              
-              for routing in matchingstatements.findall("routing"):
-                  for key, value in routing.items():
-                      if key == 'oneway':
-                          ra.bidirectional = value != 'on'
-                      elif key == 'freeway':
-                          ra.freeway = (value == 'on')
-                      elif key == 'speedcat':
-                          ra.speedcat = int(value)
-                      elif key == 'segmenttype':
-                          ra.segmenttype = int(value)
-
-              if 'junction' in self.tags and self.tags['junction'] == 'roundabout':
-                  ra.roundabout = True
-                  ra.bidirectional = False
-
-              if 'oneway' in self.tags and self.tags['oneway'] == 'yes':
-                  ra.bidirectional = False
-              
-        elif statement.tag == 'polygon':
-            try:
-                coords = [self.nodes[ref] for ref in self.waynodes]
-                objtype = group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype)
-                cellelement = CellElementArea.fromfloat(layer, (coords,), 
-                                                        objtype=objtype)
-            except GeometryError:
-                logging.warning('Improper polygon found: ' + str(coords))
-                continue
-
-        elif statement.tag == 'point':
-          assert(layer.layertype == Layer.LayerTypePoint)
-          cellelement = CellElementPoint.fromfloat(layer, self.lastnodecoord,
-                                                   objtype = group.getObjtypeIndex(self.map.getLayerIndex(layer), objtype))
-        cellelementrefs = layer.addCellElement(cellelement)
-
-        name = self._findname(matchingstatements)        
-
-        if hasname(name):
-            feature = FeatureNormal(name=cm.translate(name), layerindex=self.map.getLayerIndex(layer),
-                                    objtype=objtype,
-                                    cellelementreflist=cellelementrefs)
-            group.addFeature(feature)
-            
-      elif statement.tag == 'poi':
-        poigroup = self.map.getPOIGroup()
-        poilayer = self.map.getPOILayers()[0]
-
-        category = statement.get('category')
-        subcategory = statement.get('subcategory') or 'NOSUB1000'
-
-        cat = poigroup.catman.getCategoryByName(category)
-        subcat = cat.getSubCategoryByName(subcategory)
-
-        poice = CellElementPOI.fromfloat(poilayer, self.lastnodecoord, categoryid=cat.id, subcategoryid=subcat.id)
-
-        name = self._findname(matchingstatements)        
-
-        if hasname(name):
-          attributes = []
-          for a in matchingstatements.findall('attr'):
-            if a.get('k') in self.tags:
-              attributes.append(cm.translate(self.tags[a.get('k')]))
-            elif a.text:
-              attributes.append(cm.translate(a.text.encode))
-            else:
-              attributes.append('')
-
-          feature = FeaturePOI(poilayer.addCellElement(poice), [cm.translate(name)] + attributes, cat.id, subcat.id)
-          poigroup.addFeature(feature)
-      elif statement.tag == 'coastline':
-          self.coastline.add([self.nodes[ref] for ref in self.waynodes])
-        
-
-  def _findname(self, matchingstatements):
-    if self.nametags != None:
-      for nametag in self.nametags:
-        if nametag in self.tags:
-          return self.tags[nametag]
-    else:       
-      nameelements = matchingstatements.findall('name')
-
-      for nameelem in nameelements:
-        if nameelem.get('k') in self.tags.keys():
-          return self.tags[nameelem.get('k')]
-        elif nameelem.text != None:
-          return nameelem.text
-
-
+        self.add_element(statement, self.tags, coords)
 
 def downloadOsm(bbox, filename):
   """Download OSM data from www.informationfreeway.org of given bounding box
