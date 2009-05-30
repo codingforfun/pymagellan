@@ -52,7 +52,7 @@ How to run it
 
 Simple example to generate an image file mymap.imi from an OSM xml-file myfile.osm
 
-> osmmag.py -v -n "My map" -o mymap.imi -r osmmagellan/data/osmmagrules.xml myfile.osm
+> osmmag.py -v -n "My map" -o mymap.imi -r osmmagellan/data/osmmagrules.xml --name-tag-list=int_name,name myfile.osm
 
 Future improvements and features (in order of importance)
 ---------------------------------------------------------
