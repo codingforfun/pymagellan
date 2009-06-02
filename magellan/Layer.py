@@ -741,7 +741,9 @@ class Layer(object):
         #assert cellelem.bboxrec(self).iscoveredby(cell.bboxrec(self), xmargin=self._scale[0], ymargin=self._scale[1])
         
         nincell = cell.addCellElement(cellelem)
-
+        
+        assert nincell < 2**16
+        
         if not cell in self.modifiedcells:
             self.modifiedcells[cellnum] = cell
         if not cellnum in self.cellnumbers:

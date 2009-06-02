@@ -855,6 +855,7 @@ class CellElementPolyline(CellElementLineStringbase):
 
         cdata += pack("%db" % len(delta), *delta)
 
+        assert nvertices < 2**13
         data = data + \
                pack(prefix+"H", (polytype << 13) | nvertices)
         data = data + cdata

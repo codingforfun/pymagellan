@@ -320,6 +320,7 @@ class File:
                     for pagenum in xrange(self.npages-1):
                         data = self.fs.read(self.fstruct.ft_pgsize)
                         cdata = zlib.compress(data, 9)
+                        assert len(cdata) < 2**16
                         self.cfile.writeSlot(self.db.pack("IHH", fsout.tell(), len(cdata), 0x2f))
                         fsout.write(cdata)
 
@@ -736,7 +737,9 @@ class Table(object):
         """
         rnum = self.db.getTableIndex(self)
 
-        slotdata = self.db.pack("H", self.db.getTableIndex(self))
+        table_index = self.db.getTableIndex(self)
+        assert table_index < 2**16
+        slotdata = self.db.pack("H", table_index)
 
         if index == None:
             dbaddr = self.getFile().getNextDBAddr()
