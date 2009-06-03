@@ -72,8 +72,12 @@ class SQLBuilder(object):
         return query
 
 def build_sql_queries(filename, bbox=None):
-    target = SQLBuilder(box_node_list='box_node_list',
-                        box_way_list='box_way_list')
+    if bbox != None:
+        target = SQLBuilder(box_node_list='box_node_list',
+                            box_way_list='box_way_list')
+    else:
+        target = SQLBuilder()
+
     init_queries = []
 
     ## If bounding box is given, create a temporary table and
@@ -206,3 +210,4 @@ if __name__ == "__main__":
     doctest.testmod()
 
     print build_sql_queries('data/osmmagrules.xml', bbox = [10,20,30,40])
+ 

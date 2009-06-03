@@ -20,6 +20,7 @@ def osmmag(outfile, osmfiles = [], bbox=None, topo=None, name=None,
            routable = False,
            scale = None,
            fromdb = False,
+           db = 'osm,localhost,osm',
            download = False):
            
     logging.info('Loading rules: %s'%rulefile)
@@ -63,14 +64,15 @@ def osmmag(outfile, osmfiles = [], bbox=None, topo=None, name=None,
 
             ## Read data
             logging.info('Reading osm data and creating map')
+
             if fromdb:
                 import sqlbuilder
                 data = sqlbuilder.MapBuilderSQL(rules, m, bbox, 
                                                 nametags = nametaglist, 
                                                 routable = routable, 
-                                                dbhost = 'localhost',
-                                                dbname = 'osm',
-                                                dbuser = 'osm',
+                                                dbhost = db[1],
+                                                dbname = db[0],
+                                                dbuser = db[2],
                                                 dbpass = None)
                 data.load()
                 
@@ -204,11 +206,21 @@ def main():
     parser.add_option('--from-database', dest='fromdb', 
                       action='store_true', 
                       default=False,
-                      help='Read from a PostgreSQL (osmosis schema)')
-    
+                      help='Read from a PostgreSQL (osmosis schema) db')
+
+    parser.add_option('--database', dest='db', 
+                      metavar='database,dbhost,dbuser', type='string',
+                      action='callback', callback=parseStringList,
+                      default=['osm','localhost','osm'],
+                      help='PostgreSQL database host,db and user')
+
     parser.add_option('--routable', dest='routable', action='store_true', 
                       default=False,
                       help='Create routable map')
+    
+    parser.add_option('--debug', dest='debug', action='store_true',
+                      default=False,
+                      help='Very verbose')
 
     (options, osmfiles) = parser.parse_args()
 
@@ -220,6 +232,9 @@ def main():
         loglevel = logging.INFO
     else:
         loglevel = logging.WARNING
+
+    if options.debug:
+        loglevel = logging.DEBUG
 
     logging.basicConfig(format='%(levelname)s %(message)s', level=loglevel)
         
@@ -237,7 +252,8 @@ def main():
            routable=options.routable,
            scale=options.scale,
            bigendian=options.bigendian,
-           fromdb=options.fromdb
+           fromdb=options.fromdb,
+           db=options.db
            )            
                
 if __name__ == "__main__":
