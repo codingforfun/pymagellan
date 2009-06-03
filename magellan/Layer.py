@@ -742,7 +742,7 @@ class Layer(object):
         
         nincell = cell.addCellElement(cellelem)
         
-        assert nincell < 2**16
+        assert self.nlevels == 0 or nincell < 2**16
         
         if not cell in self.modifiedcells:
             self.modifiedcells[cellnum] = cell
