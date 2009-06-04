@@ -961,7 +961,8 @@ class LayerParamEstimator(object):
             """Return true if all cells are ok"""
             for cellnum, cellelementinfolist in sizeestimates.items():
                 if len(cellelementinfolist) > self.maxcellelements:
-                    logging.debug('Max cell elements exceeded for layer %s. cellnum=%d, # of cell elements=%d'%(self.layer.name, cellnum, len(cellelementinfolist)))
+                    logging.debug('Max cell elements exceeded for layer %s. cellnum=%d, # of cell elements=%d'%(
+                            self.layer.name, cellnum, len(cellelementinfolist)))
                     return False
                 cellsize = 0
                 for cellelementinfo in cellelementinfolist:
@@ -982,7 +983,6 @@ class LayerParamEstimator(object):
             for cellnum, cellelementinfolist in sizeestimates.items():
                 for i in xrange(len(cellelementinfolist)-1,-1,-1):
                     newcellnum = max_cellno_containing_bbox(self.layer._bbox, cellelementinfolist[i][0], nlevels)
-
                     ## If cell is updated move the item to the new cell
                     if newcellnum != cellnum:
                         cellelementinfo = cellelementinfolist.pop(i)
@@ -1027,6 +1027,9 @@ def max_cellno_containing_bbox(layerbbox, bbox, maxlevels):
     30
 
     """
+    if maxlevels == 0:
+        return 1
+
     bboxinc=bbox.translate(-layerbbox.c1)
     shifted = 0
     for n in range(maxlevels, -1, -1):
