@@ -1,3 +1,4 @@
+import logging
 import numpy as N
 from misc import dump
 import struct
@@ -654,9 +655,9 @@ class CellElementArea(CellElement):
         else:
             idelta = vlist[0]-bbox.c1
             if (idelta[0] > 65535) or (idelta[1] > 65535):
-                raise Exception("Cannot encode polygon")
+                logging.warning('Using polytype 0, the image may not work on all devices')
                 polytype = 0
-                cdata = pack(prefix+"2i", *map(int,vlist[0]))
+                cdata = pack(prefix+"2I", *map(int,vlist[0]))
             elif (idelta[0] > 255) or (idelta[1] > 255):
                 polytype = 2
                 cdata = pack(prefix+"2H", *map(int,idelta))
@@ -1249,8 +1250,8 @@ def encodedeltaslow(vlist):
 
     return cdata, nvertices
 
-def vlistinterpolate(vlist):
-    r'''Return a list of vertices where the difference between adjacent vertices is in the range [-128, 172]
+def vlistinterpolate(vlist, maxdelta=127):
+    r'''Return a list of vertices where the difference between adjacent vertices is in the range [-128, 127]
 
        Returns new vlist
          where n is the number of inserted vertices
@@ -1267,7 +1268,7 @@ def vlistinterpolate(vlist):
     for nextvertex in vlist[1:]:
         done=0
         while not done:
-            idelta,position,done = deltaint(position, nextvertex, 127)
+            idelta,position,done = deltaint(position, nextvertex, maxdelta)
             newvlist.append(position)
 
     return newvlist
