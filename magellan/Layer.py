@@ -484,7 +484,7 @@ class Layer(object):
             if self._bbox == None:
                 self.optimize()
             
-            tmplay = tempfile.NamedTemporaryFile('w')
+            tmplay = tempfile.NamedTemporaryFile('wb')
 
             self.write_header(tmplay)
 
