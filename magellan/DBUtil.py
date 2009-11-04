@@ -642,8 +642,6 @@ class SetMemberCursor(Cursor):
             return self
         else:
             if not next.iszero():
-                assert(next.getFile(db), self.setmember.table.getFile())
-
                 self.index = next.slot - 1
 
                 self.count+=1

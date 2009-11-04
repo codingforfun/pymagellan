@@ -220,6 +220,17 @@ class POIGroup(Group):
 
         self.catman.close()
 
+    def optimizeLayers(self):
+        """Call the optimize function of each member layer and update cell element reference in all features"""
+
+        cellrefremap = {}
+        for layer in self.layers:
+            remapdict = layer.optimize()
+
+            for feature in self.xfeatures:
+                if len(remapdict) > 0:
+                    feature.cellelementrefs = tuple([remapdict[ceref] for ceref in feature.cellelementrefs])
+
     @property
     def layers(self):
         return self.map.getPOILayers()

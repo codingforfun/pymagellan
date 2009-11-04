@@ -361,7 +361,7 @@ class Map(object):
         logging.info('Optimizing cell structure of normal layers')
         remaininglayers = list(self.layers + self._poiconfig.layers)
         if self.groups != None:
-            for group in self.groups:
+            for group in self.groups + [self._poigroup]:
                 group.optimizeLayers()
                 for layer in group.layers:
                     remaininglayers.remove(layer)
