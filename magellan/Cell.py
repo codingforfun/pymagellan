@@ -78,8 +78,14 @@ class Cell(object):
         raise NotImplementedError
 
     @property
+    def dbboxrec(self):
+        if self._dbbox:
+            return self._dbbox.negY()
+
+    @property
     def bboxrec(self):
-        return self._dbbox.negY()
+        if self._bbox:
+            return self._bbox.negY()
 
     def _serialize_cellelement(self, cellelement):
         cellelementdata = cellelement.serialize(self, self.layer.bigendian)

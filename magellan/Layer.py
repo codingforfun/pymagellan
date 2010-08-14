@@ -328,16 +328,16 @@ class Layer(object):
 
         ## Copy resolution and reference point from map
         self._scale = m.scale                           # [xscale, yscale]
-        self._refpoint = m.refpoint                     # Reference point for conversion to discrete coordinates
+        self._refpoint = m.refpoint                     # Reference point for conversion to discrete coordinate
+        self._bbox = None
+        self._dbbox = None
+
+        self.nlevels = nlevels # Cell levels
 
         if m.bboxrec:
-            self._dbbox = m.bboxrec.negY().todiscrete(self._refpoint, self._scale)
-            self._bbox = self._dbbox.tocontinous(self._refpoint, self._scale)
+            self.dbboxrec = m.bboxrec.todiscrete(self._refpoint, self._scale)
             self.estimator = None
         else:
-            self._bbox = None
-            self._dbbox = None
-
             ## Create layer parameter estimator object
             self.estimator = LayerParamEstimator(self)
 
@@ -358,7 +358,6 @@ class Layer(object):
         self.bigendian = m.bigendian
         self.writedrc = False         # Write DRC file needed by mapsend software
 
-        self.nlevels = nlevels # Cell levels
         self.nobjects = 0
         self.category = 0 # 0=Normal layer, 1=Artificial layer
         self.fileidentifier = fileidentifier
@@ -416,11 +415,12 @@ class Layer(object):
                 else:
                     self.layerfilename = self.filename+".yal"
                     self.indexfilename = self.filename+".tlc"
-                self.fhlay = self.map.mapdir.open(self.layerfilename, "wb")
 
                 if not self.map.inmemory:
                     self.shelffile = tempfile.mktemp()
                     self.shelf = shelve.open(self.shelffile)
+
+                self.fhlay = self.map.mapdir.open(self.layerfilename,"wb")
 
             isopen=True
 
@@ -442,17 +442,23 @@ class Layer(object):
         Returns a dictionary of mapping between old and new cellreferences
         
         """
+
         if self.mode == 'w' and self._bbox == None:
             remapdict = {}
 
             logging.debug("Optimizing layer "+self.name)
 
             dbboxrec = self.estimator.calculateDBBox()
+
             if dbboxrec:
                 self.dbboxrec = dbboxrec
 
             ## Get nlevels estimate
             self.nlevels = self.estimator.calculateNlevels()
+
+            ## Adjust bounding box borders to get integer cellsize
+            if dbboxrec:
+                self.dbboxrec = dbboxrec
 
             ## Update the bounding box of cell 1
             self.getCell(1).setbbox()
@@ -466,7 +472,8 @@ class Layer(object):
                 self.clearCells()
 
                 ## Loop over the elements in the old cell 1 
-                ## The elements need to be accessed in reversed order, otherwise the cellelement numbers would change
+                ## The elements need to be accessed in reversed order, otherwise the 
+                ## cellelement numbers would change
                 ## during the loop
                 for i in range(len(oldcell1)-1,-1,-1):
                     ce = oldcell1.pop(i)
@@ -484,7 +491,7 @@ class Layer(object):
             if self._bbox == None:
                 self.optimize()
             
-            tmplay = tempfile.NamedTemporaryFile('wb')
+            tmplay = tempfile.NamedTemporaryFile('wb', delete=False)
 
             self.write_header(tmplay)
 
@@ -509,12 +516,12 @@ class Layer(object):
             tmplay.seek(0)
             self.write_header(tmplay)
 
-            tmplay.flush()
-
-            tmplay.seek(0) # This is needed in Windows as reported by ludwigmb
+            # Copy temporary file to layer file
+            tmplay.close()
+            tmplay = open(tmplay.name, 'rb')
             shutil.copyfileobj(tmplay, self.fhlay)
-
-            self.fhlay.close()
+            tmplay.close()
+            os.unlink(tmplay.name)
 
             # Create index file
             fhidx = self.map.mapdir.open(self.indexfilename,"wb")
@@ -535,7 +542,8 @@ class Layer(object):
             if fhdrc:
                 fhdrc.close()
             
-            self.fhlay.close()
+            if self.fhlay:
+                self.fhlay.close()
 
         if self.mode == 'w' and not self.map.inmemory:
             os.unlink(self.shelffile)
@@ -588,6 +596,23 @@ class Layer(object):
         [self.lastcell] = self.unpack("i", self.dheader[0x52:])
 
         assert(unknown49, 0)
+
+    def header_info(self):
+        info = ""
+        info += "Category: 0x%x"%self.category + '\n'
+        info += "Fileidentifier: 0x%x"%self.fileidentifier +'\n'
+        info += "Number of levels: %d"%self.nlevels + '\n'
+        info += "Number of elements: %d"%self.nobjects + '\n'
+        info += "Bbox: %s"%self._bbox +'\n'
+        info += "Scale: %s"%str(self._scale) + '\n'
+        info += "Refpoint: %s"%str(self._refpoint) + '\n'
+        info += "Layer type: 0x%x"%self.layertype + '\n'
+        info += "Largest cell size: 0x%x"%self.largestcellsize + '\n'
+        info += "First cell: 0x%x"%self.firstcell + '\n'
+        info += "Last cell: 0x%x"%self.lastcell + '\n'
+
+        info += "Discrete Bbox: %s"%self._dbbox +'\n'
+        return info
 
     def write_header(self, fh):
         header = "MHGO"
@@ -714,17 +739,16 @@ class Layer(object):
     def addCellElement(self, cellelem, cellnum = None):
         """Add cell element to layer. The element might be divided into smaller elements.
          Returns list of (cellnum,# in cell) pairs"""
-        
         if self.mode in ('r', None):
             raise ValueError('Layer must be opened in write or append mode to add cell elements')
 
+        ## Calculate the minimum cell that contains the extents of the new element
         if self._bbox != None:
             if cellnum == None:
-                cellnum = max_cellno_containing_bbox(self._bbox,
-                                                     cellelem.bboxrec(self).negY(),
+                cellnum = max_cellno_containing_bbox(self._dbbox,
+                                                     cellelem.dbboxrec.negY(),
                                                      self.nlevels)
-
-#            assert cellelem.bboxrec(self).iscoveredby(self.bboxrec(self), xmargin=self._scale[0], ymargin=self._scale[1]), "CellElement is outside layer boundaries:" + \
+#            assert cellelem.bboxrec(self).iscoveredby(self.bboxrec, xmargin=self._scale[0], ymargin=self._scale[1]), "CellElement is outside layer boundaries:" + \
 #                   str(self.bboxrec(self)) + " cellelement:" + str(cellelem.bboxrec(self))
         else:
             if self.nlevels > 0:
@@ -732,13 +756,14 @@ class Layer(object):
             cellnum = 1
 
             self.estimator.addCellElement(cellelem)
-            
+         
         cellelem.cellnum = cellnum
         
         cell = self.getCell(cellnum)
-
-        # Check that cell element is contained by cell
-        #assert cellelem.bboxrec(self).iscoveredby(cell.bboxrec(self), xmargin=self._scale[0], ymargin=self._scale[1])
+        
+        assert cell.bboxrec == None or \
+            cellelem.dbboxrec.iscoveredby(cell.dbboxrec), \
+            "Incorrect cell %d with bbox %s for cell element with bbox %s"%(cellnum, cell.dbboxrec, str(cellelem.dbboxrec))
         
         nincell = cell.addCellElement(cellelem)
         
@@ -776,10 +801,7 @@ class Layer(object):
         if self.mode == 'r':
             raise ValueError("Can't change boundary rectangle in read-only mode")
 
-        rec = rec.negY()
-        
-        self._dbbox = rec.todiscrete(self._refpoint, self._scale)
-        self._bbox = self._dbbox.tocontinous(self._refpoint, self._scale)
+        self.dbboxrec = rec.todiscrete(self._refpoint, self._scale)
 
         # If in append mode all cell elements must be re-added to fit the new
         # cell boundaries
@@ -798,16 +820,30 @@ class Layer(object):
             return self._dbbox
         else:
             return None
+
     def set_dbboxrec(self, drec):
-        if self.mode == 'r':
+        first_time = self._dbbox == None
+
+        if not first_time and self.mode == 'r':
             raise ValueError("Can't change boundary rectangle in read-only mode")
 
         self._dbbox = drec.negY()
         self._bbox = self._dbbox.tocontinous(self._refpoint, self._scale)
 
+        if self._dbbox.width % (2 ** self.nlevels) != 0 or self._dbbox.height % (2 ** self.nlevels) != 0:
+            logging.warn("bbox should be a multiple of minimum cell size, adjusting bbox borders")
+            n = 2 ** self.nlevels
+            width = self._dbbox.width
+            height = self._dbbox.height
+            print "width", width, height
+            width += width % n
+            height += height % n
+                
+            self._dbbox = Rec(self._dbbox.c1, self._dbbox.c1 + N.array(width, height))
+
         # If in append mode all cell elements must be re-added to fit the new
         # cell boundaries
-        if self.mode == 'a':
+        if not first_time and self.mode == 'a':
             cellelements = [e for e in self.getCellElements()]
             
             self.clearCells()
@@ -830,7 +866,6 @@ class Layer(object):
 
         Note, the extents return is in the internal coordinates with negated Y-values
         """
-
         ## Calculate cell level
         level=0
         while cellnum > totcells_at_level(level):
@@ -982,7 +1017,7 @@ class LayerParamEstimator(object):
 
             for cellnum, cellelementinfolist in sizeestimates.items():
                 for i in xrange(len(cellelementinfolist)-1,-1,-1):
-                    newcellnum = max_cellno_containing_bbox(self.layer._bbox, cellelementinfolist[i][0], nlevels)
+                    newcellnum = max_cellno_containing_bbox(self.layer.dbboxrec.negY(), cellelementinfolist[i][0].negY(), nlevels)
                     ## If cell is updated move the item to the new cell
                     if newcellnum != cellnum:
                         cellelementinfo = cellelementinfolist.pop(i)
@@ -1000,7 +1035,11 @@ class LayerParamEstimator(object):
         if N.alltrue(self.dbboxmin == self.layer.float2discrete((N.array([180.0, 90.0]),))):
             return None
 
-        dbbox = Rec(self.dbboxmin, self.dbboxmax)
+        if N.all(self.dbboxmin != self.dbboxmax):
+            dbbox = Rec(self.dbboxmin, self.dbboxmax)
+        else:
+            # Magellan Software cannot handle zero-area bounding boxes
+            dbbox = Rec(self.dbboxmin, self.dbboxmax + N.array([1,1]))
          
         if self.verbose:
             print "Estimated discretebbox", dbbox
@@ -1010,6 +1049,95 @@ class LayerParamEstimator(object):
 ###############################################################################
 # Helper functions 
 
+
+# Find the best cell for a given rectangle.
+# Input:
+#     bounds: integer coordinates of the bounding rectangle, inclusive of the
+#         n and w borders and exclusive of the s and e borders
+#     r: integer coordinates of the rectangle for which a cell is being sought
+#         (inclusive of all borders)
+#     max_cell_level: maximum level of cell granularity
+# Assumptions:
+#     r is within bounds
+#     (bounds.s - bounds.n) and (bounds.e - bounds.w) are multiples of 2 to
+#         the power of (max_cell_level + 1)
+# Output:
+#     cell number
+#     cell level
+#     cell bounding box in integer coordinates relative to the top left corner
+#         of the overall bounding rectangle, inclusive of all borders
+#
+# This program is in public domain.
+
+def get_best_cell(bounds, r, max_cell_level):
+        max_cell_level += 1     # To take account of the "shifted" level
+        i = 1 << max_cell_level
+
+        # Normalise rectangle's coordinates to within 0 to i-1
+        v = (bounds.s - bounds.n) / i   # vertical normalisation factor
+        h = (bounds.e - bounds.w) / i   # horizontal normalisation factor
+        n = (r.n - bounds.n) / v
+        s = (r.s - bounds.n) / v
+        w = (r.w - bounds.w) / h
+        e = (r.e - bounds.w) / h
+
+        # Find the best "direct" cell (without half cell shifting)
+        m = (n ^ s) | (w ^ e)
+        # The most significant 1 (as a bit) in m indicates cell level
+        # Now compute cell number
+        l = 1 << (max_cell_level - 1)
+        cell = 1
+        shift = max_cell_level
+        stride = 1
+        i = -3          # compensation for the lack of Level 0' (shifted)
+        while l > 1 and (l & m) == 0:
+                cell = i + stride * stride + (stride + 1) ** 2
+                i = cell
+                stride <<= 1
+                l >>= 1
+                shift -= 1
+
+        # Now l equals 1 << (level - 1) for unshifted cells
+        # Compute the number of the best unshifted cell
+        best_cell = cell + (n >> shift) * stride + (w >> shift)
+        cell_size = 1 << shift
+        cell_offset = 0
+        cell_level = max_cell_level - shift
+
+        # Check if a shifted cell of the same or more detailed level
+        # can be used
+        if cell == 1:           # Skip Level 0'
+                l >>= 1
+                shift -= 1
+                stride <<= 1
+                cell = 2
+
+        while l > 0:
+                cell += stride * stride
+                m = ((n + l) ^ (s + l)) | ((w + l) ^ (e + l))
+                if m < 2 * l:   # found a better cell
+                        best_cell = cell + ((n + l) >> shift) * (stride + 1) \
+                                         + ((w + l) >> shift)
+                        cell_size = 1 << shift
+                        cell_offset = l
+                        cell_level = max_cell_level - shift
+                l >>= 1
+                cell += (stride + 1) ** 2
+                stride <<= 1
+                shift -= 1
+
+        # layer's bounding rectangle
+        normn = ((n + cell_offset) & -cell_size) - cell_offset
+        normw = ((w + cell_offset) & -cell_size) - cell_offset
+
+        n = max(normn * v, 0)
+        w = max(normw * h, 0)
+        s = min((normn + cell_size) * v, bounds.s - bounds.n) - 1
+        e = min((normw + cell_size) * h, bounds.e - bounds.w) - 1
+        border = Rec((s,w), (n,e))
+
+        # Return cell number, level, and border
+        return best_cell, cell_level, border
 
 def max_cellno_containing_bbox(layerbbox, bbox, maxlevels):
     """Calculate the maximum cellnumber that contains the bbox.
@@ -1025,33 +1153,41 @@ def max_cellno_containing_bbox(layerbbox, bbox, maxlevels):
     14
     >>> max_cellno_containing_bbox(Rec((0,0),(1.0, 1.0)), Rec((0.8,0.8),(0.9,0.9)), 2)
     30
+    >>> max_cellno_containing_bbox(Rec((19.069992,47.450007),(19.234989,47.525004)), Rec((19.234593,47.466513)-(19.234998,47.466945)))
 
     """
     if maxlevels == 0:
         return 1
 
-    bboxinc=bbox.translate(-layerbbox.c1)
+    bboxinc=bbox.translate(-layerbbox.ll)
     shifted = 0
     for n in range(maxlevels, -1, -1):
         cellw = layerbbox.width / (2**n)
         cellh = layerbbox.height / (2**n)
+
         if bboxinc.width > cellw or bboxinc.height > cellh:
             continue
 
-        if (bboxinc.c2[0] % cellw) < (bboxinc.c1[0] % cellw) or \
-           (bboxinc.c2[1] % cellh) < (bboxinc.c1[1] % cellh):
+        if int(bboxinc.c2[0] // cellw) != int(bboxinc.c1[0] // cellw) or \
+           int(bboxinc.c2[1] // cellh) != int(bboxinc.c1[1] // cellh):
+
+            ## Shift cell window
             bbt = bboxinc.translate(N.array([cellw/2, cellh/2]))
-            if (bbt.c2[0] % cellw) < (bbt.c1[0] % cellw) or \
-               (bbt.c2[1] % cellh) < (bbt.c1[1] % cellh):
+
+            if int(bbt.c2[0] // cellw) != int(bbt.c1[0] // cellw) or \
+               int(bbt.c2[1] // cellh) != int(bbt.c1[1] // cellh):
                 continue
             shifted = 1
+
         break
+    
 
-    col = (bboxinc.c1[0]+0.5*cellw*shifted) / cellw
-    row = (bboxinc.c1[1]+0.5*cellh*shifted) / cellh
+    col = (bboxinc.c1[0] + cellw*shifted/2 ) / cellw
+    row = (bboxinc.c1[1] + cellh*shifted/2) / cellh
 
-    col = max(int(col), 0)
-    row = max(int(row), 0)
+    ## Limit row and columns to cell grid
+    col = min(max(int(col), 0), 2**n-1)
+    row = min(max(int(row), 0), 2**n-1)
 
     cellnum = 1 + totcells_at_level(n-1) + \
               col + (2**n + shifted)*row + shifted * 4**n

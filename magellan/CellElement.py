@@ -1108,7 +1108,7 @@ class Rec(object):
     def __copy__(self):
         return Rec(self.c1, self.c2)
     def __str__(self):
-        return "(%s,%s)-(%s,%s)" % \
+        return "Rec((%s,%s),(%s,%s))" % \
                (str(self.c1[0]),str(self.c1[1]),str(self.c2[0]),str(self.c2[1]))
     def __repr__(self): return self.__str__()
 
@@ -1199,7 +1199,7 @@ class Rec(object):
                    N.array([max(self.c2[0], a.c2[0]), max(self.c2[1], a.c2[1])]))
     def buffer(self, v):
         return Rec(self.c1-v,self.c2+v)
-    def iscoveredby(self, rec2, xmargin=1e-6, ymargin=1e-6):
+    def iscoveredby(self, rec2, xmargin=0, ymargin=0):
         return N.alltrue(rec2.c1 <= self.c1+xmargin) and N.alltrue(rec2.c2 >= self.c2-ymargin)
 
     @property

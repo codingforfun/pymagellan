@@ -1,6 +1,6 @@
 import sys
 from magellan.mapdir import MapDirectory, Image
-from magellan.Map import Map, MapTypeImage, MapImage
+from magellan.Map import Map, MapImage
 from magellan.Layer import Layer, LayerTypePolyline, DetailMapLayerStyle
 from magellan.CellElement import CellElementPolyline
 from magellan.SearchGroup import Feature,FeatureNormal,FeatureStreet, GroupNormal
@@ -19,12 +19,20 @@ m.open('r')
 
 print "Group names: ", m.getGroupNames()
 
+print ""
+
 ## Print layer element
+print 80 * "*"
+print "Layers:"
 if layerinfo:
     for layer in m.layers:
         layer.open('r')
 
-        print repr(layer)
+        print "Layer: ", layer.name
+        print "Header:"
+        print layer.header_info()
+        
+        
 
 #        print toRSTtable([['Text slot', 'object type']]+
 #            [['0x%x'%ce.textslot, ce.objtype] for ce in layer.getCellElements()])

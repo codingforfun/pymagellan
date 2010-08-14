@@ -72,7 +72,7 @@ class Map(object):
     defaultscale = N.array([9e-6, 9e-6])
     
     def __init__(self, mapdirobj = None, gpsimage = True, maptype = MapTypeNormal,
-                 mapnumber=0, bigendian = False, inifile = None):
+                 mapnumber=0, bigendian = False, inifile = None, hasmultiplemaps=True):
         self.gpsimage = gpsimage
         self.maptype = maptype
         self._mapnumber = mapnumber
@@ -154,6 +154,9 @@ class Map(object):
 
         ## Update config
         self._updatecfg()
+
+        ## hasmultiplemaps is True if mapdir can have multiple maps with prefixes before their files
+        self.hasmultiplemaps = hasmultiplemaps
 
     def set_scale(self, scale):
         """Set discrete unit as a xscale, yscale sequence"""
@@ -264,8 +267,9 @@ class Map(object):
                 self.maptype = self._cfg.get("MAP_INFO", "MAPTYPE")
 
             # Get bounding box
-            bbox = map(float, self._cfg.get("MAP_INFO", "BND_BOX").split(" "))
-            self._bboxrec = Rec([bbox[0],bbox[2]], [bbox[1], bbox[3]])
+            if self._cfg.has_option('MAP_INFO', 'BND_BOX'):
+                bbox = map(float, self._cfg.get("MAP_INFO", "BND_BOX").split(" "))
+                self._bboxrec = Rec([bbox[0],bbox[2]], [bbox[1], bbox[3]])
 
             # Get map name
             self.name = self._cfg.get('MAP_INFO', 'MAP_NAME')
@@ -620,7 +624,7 @@ class Map(object):
 
     @property
     def mapnumstr(self):
-        if self.gpsimage:
+        if self.hasmultiplemaps:
             return '%02d'%self._mapnumber
         else:
             return ''
@@ -690,13 +694,22 @@ class MapImage(object):
                 self.mapdir.copyfile(os.path.join(datadir, file))
 
         elif mode in ('r', 'a'):
-            addmapscfg = self.mapdir.open('add_maps.cfg')
-            columns = re.split('\s+', addmapscfg.readline())
+            if self.mapdir.exists('add_maps.cfg'):
+                addmapscfg = self.mapdir.open('add_maps.cfg')
+            
+                columns = re.split('\s+', addmapscfg.readline())
+                n = int(columns[0])
+                inifiles = columns[1:n+1]
+                hasmultiplemaps = True
+            else:
+                hasmultiplemaps = False
+                if self.mapdir.exists('lay_info.ini'):
+                    inifiles = ['lay_info.ini']
+                else:
+                    raise Exception('Could not find a layer ini file')
 
-            n = int(columns[0])
-
-            for inifile in columns[1:n+1]:
-                m = Map(self.mapdir, bigendian=self._bigendian, inifile=inifile)
+            for inifile in inifiles:
+                m = Map(self.mapdir, bigendian=self._bigendian, inifile=inifile, hasmultiplemaps=hasmultiplemaps)
                 m.open(mode)
                 self._maps.append(m)
 
