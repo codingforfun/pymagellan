@@ -53,12 +53,19 @@
 	<layer name="Farm" filename="farm" color="YELLOW" style="SOLID_FILL" type="polygon" draworder="90" />
       </layers>
     </group>    
+
+    <!-- Parkings etc -->
+    <group name="Parkings" searchgroup="true">
+      <layers>
+	<layer name="Parking" filename="park2" color="DARK_GRAY" style="SOLID_FILL" type="polygon" draworder="90" />
+      </layers>
+    </group>
     
     <!-- Hydrography -->
     <group name="Hydrography" searchgroup="true">
       <layers>
-	<layer name="Hydro_Polygons" filename="hydp" color="DARK_GRAY" style="SOLID_FILL" type="polygon" draworder="99" />
-	<layer name="Hydro_Lines" filename="hydl" color="DARK_GRAY" style="SINGLE_LINE" type="polyline" draworder="99" />
+	<layer name="Hydro_Polygons" filename="hydp" color="BLUE" style="SOLID_FILL" type="polygon" draworder="99" />
+	<layer name="Hydro_Lines" filename="hydl" color="BLUE" style="SINGLE_LINE" type="polyline" draworder="99" />
       </layers>
     </group>
 
@@ -163,7 +170,7 @@
     <rule e="way" k="highway" v="service"> <polyline layer="Streets"/> </rule> 
 
     <!-- Paths -->
-    <rule e="way" k="highway" v="footway|steps"> <polyline layer="Trails"/> </rule> 
+    <rule e="way" k="highway" v="path|footway|steps"> <polyline layer="Trails"/> </rule> 
 
     <!-- Cycle ways-->
     <rule e="way" k="cycleway" v="track"> <polyline layer="Trails"/></rule> 
@@ -176,8 +183,15 @@
       <point layer="Points"/>
     </rule>
 
+    <!-- Parkings -->
+    <rule e="way" k="amenity" v="parking"> <polygon layer="Parking"/> </rule>
+
     <!-- POI -->
-    <rule e="node" k="amenity" v="fuel"> <poi category="Gas stations"/> </rule>
+    <rule e="node" k="amenity" v="fuel"> 
+      <attr k="contact:phone"/>
+      <attr k="contact:address"/>
+      <poi category="Gas stations"/> 
+    </rule>
     <rule e="node" k="shop" v="supermarket"> 
       <poi category="Shopping" subcategory="Supermarket"/> 
       <attr k="contact:phone"/>
