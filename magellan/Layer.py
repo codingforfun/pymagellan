@@ -745,9 +745,10 @@ class Layer(object):
         ## Calculate the minimum cell that contains the extents of the new element
         if self._bbox != None:
             if cellnum == None:
-                cellnum = max_cellno_containing_bbox(self._dbbox,
-                                                     cellelem.dbboxrec.negY(),
-                                                     self.nlevels)
+                cellnum, level, dcellrec = get_best_cell(self._dbbox,
+                                                        cellelem.dbboxrec.negY(),
+                                                        self.nlevels)
+
 #            assert cellelem.bboxrec(self).iscoveredby(self.bboxrec, xmargin=self._scale[0], ymargin=self._scale[1]), "CellElement is outside layer boundaries:" + \
 #                   str(self.bboxrec(self)) + " cellelement:" + str(cellelem.bboxrec(self))
         else:
@@ -760,7 +761,7 @@ class Layer(object):
         cellelem.cellnum = cellnum
         
         cell = self.getCell(cellnum)
-        
+
         assert cell.bboxrec == None or \
             cellelem.dbboxrec.iscoveredby(cell.dbboxrec), \
             "Incorrect cell %d with bbox %s for cell element with bbox %s"%(cellnum, cell.dbboxrec, str(cellelem.dbboxrec))
@@ -817,7 +818,7 @@ class Layer(object):
 
     def get_dbboxrec(self):
         if self._dbbox:
-            return self._dbbox
+            return self._dbbox.negY()
         else:
             return None
 
@@ -832,12 +833,12 @@ class Layer(object):
 
         if self._dbbox.width % (2 ** self.nlevels) != 0 or self._dbbox.height % (2 ** self.nlevels) != 0:
             logging.warn("bbox should be a multiple of minimum cell size, adjusting bbox borders")
-            n = 2 ** self.nlevels
+            n = 2 ** (self.nlevels + 1)
             width = self._dbbox.width
             height = self._dbbox.height
-            print "width", width, height
-            width += width % n
-            height += height % n
+
+            width += -width % n
+            height += -height % n
                 
             self._dbbox = Rec(self._dbbox.c1, self._dbbox.c1 + N.array(width, height))
 
@@ -1137,7 +1138,7 @@ def get_best_cell(bounds, r, max_cell_level):
         border = Rec((s,w), (n,e))
 
         # Return cell number, level, and border
-        return best_cell, cell_level, border
+        return int(best_cell), cell_level, border
 
 def max_cellno_containing_bbox(layerbbox, bbox, maxlevels):
     """Calculate the maximum cellnumber that contains the bbox.
