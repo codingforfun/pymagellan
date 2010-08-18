@@ -77,7 +77,7 @@ def osmmag(outfile, osmfiles = [], bbox=None, topo=None, name=None,
                 data.load()
                 
                 ## Add coastline
-                logging.info('Create hydro polygons from coastline')
+                logging.info('Creating hydro polygons from coastline')
                 data.addCoastLinePolygon()
             else:
                 for osmfile in osmfiles:
@@ -86,7 +86,7 @@ def osmmag(outfile, osmfiles = [], bbox=None, topo=None, name=None,
                     data.load()
 
                     ## Add coastline
-                    logging.info('Create hydro polygons from coastline')
+                    logging.info('Creating hydro polygons from coastline')
                     data.addCoastLinePolygon()
 
             if name:

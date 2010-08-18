@@ -34,7 +34,7 @@ class MapBuilder(object):
         self.routable = routable
         self.nametags = nametags
         self.charmap = char.UnicodeTranslator()
-        self.coastline = coastline.CoastLine()
+        self.coastline = None
 
         ## Set copyright field
         self.map.copyrightholders = \
@@ -140,7 +140,14 @@ class MapBuilder(object):
           feature = FeaturePOI(poilayer.addCellElement(poice), [cm.translate(name)] + attributes, cat.id, subcat.id)
           poigroup.addFeature(feature)
       elif statement.tag == 'coastline':
+          if len(coords) < 2:
+              return
+
+          if self.coastline == None:
+              self.coastline = coastline.CoastLine()
+
           self.coastline.add(coords)
+          self.coastlayername = statement.get('layer')
 
     def _findname(self, statement, tags):
         if self.nametags != None:
@@ -157,9 +164,25 @@ class MapBuilder(object):
                     return nameelem.text
 
     def addCoastLinePolygon(self, bbox = None):
-        pass
-        #       for polygon in self.coastline.polygons(bbox):
-        #           print polygon
+        if self.coastline:
+            layer, group = self.map.getLayerAndGroupByName(\
+                self.map.mapnumstr + '_' + self.coastlayername )
+
+            assert(layer.layertype == Layer.LayerTypePolygon)
+
+            for polygon in self.coastline.polygons(bbox):
+                try:
+                    objtype = group.getObjtypeIndex(self.map.getLayerIndex(layer), 1)
+                    cellelement = CellElementArea.fromfloat(layer, polygon, 
+                                                            objtype=objtype)
+                except GeometryError:
+                    logging.warning('Improper polygon found: ' + str(coords))
+                    return
+
+                layer.addCellElement(cellelement)
+        else:
+            logging.warning("No coastline features found")
+            
 
 class LoadOsm(handler.ContentHandler, MapBuilder):
   """Parse an OSM file and add features to a Map"""
@@ -195,7 +218,6 @@ class LoadOsm(handler.ContentHandler, MapBuilder):
       parser = make_parser()
       parser.setContentHandler(self)
 
-      self.coastline = coastline.CoastLine()
       parser.parse(self.filename)
     except xml.sax._exceptions.SAXParseException:
       print "Error loading %s" % self.filename

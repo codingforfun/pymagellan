@@ -140,7 +140,7 @@
     </category>
   </poicategories>
 
-
+  
 
   <!-- OSM translation rules -->
   <rules>
@@ -156,7 +156,7 @@
     <rule e="way" k="landuse" v="farm"> <polygon layer="Farm"/> </rule>
 
     <!-- Coast line -->
-    <!-- <rule e="way" k="natural" v="coastline"> <coastline/> </rule> -->
+    <rule e="way" k="natural" v="coastline"> <coastline layer="Hydro_Polygons"/> </rule>
     
     <!-- Roads and streets -->
     <rule e="way" k="highway" v="motorway|motorway_link"> <polyline layer="Freeways"/> <routing freeway="yes" oneway="yes"/> </rule>

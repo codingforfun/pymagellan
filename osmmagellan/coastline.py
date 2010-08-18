@@ -47,11 +47,9 @@ def isccw(coords):
     False
 
     """
-
-    print coords
     ## Calculate area of polygon as
     ## area = area + (x2 - x1) * (y2 + y1) / 2
-    a = N.array(coords)
+    a = N.asarray(coords)
 
     ## x2 - x1
     x = N.diff(a[:,0])
@@ -104,7 +102,7 @@ def coastline2polygon(bbox, linestrings, assumewater = False):
     result = [] ## Resulting polygons
     for linestring in linestrings:
         if linestring.is_ring:
-            if isccw(linestring):
+            if isccw(linestring.coords):
                 islands.append(linestring)
             else:
                 oceans.append(linestring)
