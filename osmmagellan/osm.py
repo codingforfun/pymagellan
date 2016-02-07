@@ -264,6 +264,9 @@ class LoadOsm(handler.ContentHandler, MapBuilder):
         coords = [self.nodes[ref] for ref in self.waynodes]
     elif name == 'node':
         coords = [self.lastnodecoord]
+    elif name == 'relation':
+        logging.warning("Ignoring unsupported element type 'relation'")
+        return
 
     for statement in matchingstatements:
         self.add_element(statement, self.tags, coords)
