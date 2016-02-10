@@ -215,11 +215,11 @@ def set_visibility(layerstyle, element):
   if layervisibility:
     layerstyle.visiblerange = getranges(layervisibility)
     
-  labelvisibility = element.find('layervisibility')
+  labelvisibility = element.find('labelvisibility')
   if labelvisibility:
     layerstyle.labelrange = getranges(labelvisibility)
 
-  basemapvisibility = element.find('layervisibility')
+  basemapvisibility = element.find('basemapvisibility')
   if basemapvisibility:
     layerstyle.hidebasemaprange = getranges(basemapvisibility)
 
